@@ -150,13 +150,15 @@ namespace triton
     {
       if (version >= 11040)
         return 74;
-      // if(version >= 11030) return 73;
-      // if(version >= 11020) return 72;
-      // if(version >= 11010) return 71;
-      // if(version >= 11000) return 70;
-      // if(version >= 10020) return 65;
-      // if(version >= 10010) return 64;
-      // if(version >= 10000) return 63;
+      /*
+       if(version >= 11030) return 73;
+       if(version >= 11020) return 72;
+       if(version >= 11010) return 71;
+       if(version >= 11000) return 70;
+       if(version >= 10020) return 65;
+       if(version >= 10010) return 64;
+       if(version >= 10000) return 63;
+       */
       throw std::runtime_error("Triton requires CUDA 11.4+");
     }
 
@@ -246,6 +248,7 @@ namespace triton
       int err;
       cmd = ptxas + " -v --gpu-name=sm_" + std::to_string(cc) + " " + fsrc + " -o " + fsrc + ".o 2> " + flog;
       err = system(cmd.c_str());
+      //std::cout << cmd << std::endl;
       if (err != 0)
       {
         std::ifstream _log(_flog);

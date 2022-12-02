@@ -899,6 +899,11 @@ def _compile(fn, signature: str, device: int = -1, constants=dict(),
     if extern_libs is None:
         extern_libs = dict()
     name, asm, shared_mem = _triton.code_gen.compile_ttir(backend, module, device, num_warps, num_stages, extern_libs, cc)
+    #xyliu dump asm
+    with open('/tmp/kernel.bc','w') as f:
+            print(asm, file =f)
+            #print(asm['llir'], file =f)
+            #print(asm['ttir'], file =f)
     return asm, shared_mem, name
 
 
