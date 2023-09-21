@@ -37,18 +37,6 @@ Python API
    python-api/triton.testing
 
 
-Triton MLIR Dialects and Ops
---------------------
-
-- :doc:`Triton MLIR Dialects and Ops <dialects/dialects>`
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Triton MLIR Dialects
-   :hidden:
-
-   dialects/dialects
-
 Going Further
 -------------
 

@@ -1,0 +1,1 @@
+{"num_warps": 4, "warp_size": 64, "num_stages": 3, "constants": {"9": 1, "10": 4608, "11": 320, "12": 32, "13": 128, "14": 64, "15": 5, "16": true, "8": 1, "4": 1, "6": 1}, "debug": null, "arch": ["amdgcn-amd-amdhsa", "gfx90a", "", 64], "device_type": "hip", "shared": 16896, "name": "matmul_kernel_0d1d2d3d4c5d6c7d8c"}

@@ -1,11 +1,14 @@
 from __future__ import annotations  # remove after python 3.11
 
+import warnings
 from functools import wraps
 from typing import List, Optional, Sequence, Tuple, TypeVar
 
 from .._C.libtriton.triton import ir
-from ..common.build import is_hip
 from . import core as tl
+
+import triton._C.libtriton.triton as _triton
+import re
 
 T = TypeVar('T')
 
@@ -133,8 +136,6 @@ def add(input: tl.tensor,
     # ptr + offset
     if other_scalar_ty.is_ptr() and not input_scalar_ty.is_ptr():
         input, other = other, input
-        input_scalar_ty = input.type.scalar
-        other_scalar_ty = other.type.scalar
     if input_scalar_ty.is_ptr():
         return tl.tensor(builder.create_addptr(input.handle, other.handle), input.type)
     # float + float
@@ -194,7 +195,7 @@ def truediv(input: tl.tensor,
     elif input_scalar_ty.is_int() and other_scalar_ty.is_int():
         input = cast(input, tl.float32, builder)
         other = cast(other, tl.float32, builder)
-    # float / float (cast to the highest exponent type)
+    # float / float (cast to highest exponent type)
     elif input_scalar_ty.is_floating() and other_scalar_ty.is_floating():
         if input_scalar_ty.fp_mantissa_width > other_scalar_ty.fp_mantissa_width:
             other = cast(other, input_scalar_ty, builder)
@@ -501,30 +502,30 @@ def full(shape: List[int], value, dtype: tl.dtype, builder: ir.builder) -> tl.te
     if isinstance(value, tl.tensor):
         assert value.numel.value == 1, "only accepts size-1 tensor"
         value = cast(value, dtype, builder)
+        ret_ty = tl.block_type(value.dtype, shape)
+        return tl.tensor(builder.create_splat(value.handle, shape), ret_ty)
     else:
         # scalar
-        if dtype is None:
-            raise ValueError("dtype must be specified when value is not a tensor")
         if value == 0:
             value = builder.get_null_value(dtype.to_ir(builder))
         else:
             get_value_fn = getattr(builder, f"get_{dtype.name}")
             value = get_value_fn(value)
-        value = tl.tensor(value, dtype)
+        if dtype is None:
+            raise ValueError("dtype must be specified when value is not a tensor")
+        ret_ty = tl.block_type(dtype, shape)
+        return tl.tensor(builder.create_splat(value, shape), ret_ty)
 
-    return splat(value, shape, builder)
 
+
+def ones(shape: List[int], dtype: tl.dtype, builder: ir.builder) -> tl.tensor:
+    _1 = builder.get_one_value(dtype.to_ir(builder))
+    ret_ty = tl.block_type(dtype, shape)
+    return tl.tensor(builder.create_splat(_1, shape), ret_ty)
 
 # ===----------------------------------------------------------------------===//
 #                               Shape Manipulation
 # ===----------------------------------------------------------------------===//
-
-def splat(value: tl.tensor, shape: List[int], builder: ir.builder) -> tl.tensor:
-    assert not value.type.is_block(), "Cannot splat a block tensor"
-    if len(shape) == 0:
-        return value
-    ret_ty = tl.block_type(value.dtype, shape)
-    return tl.tensor(builder.create_splat(value.handle, shape), ret_ty)
 
 
 def view(input: tl.tensor,
@@ -550,12 +551,8 @@ def reshape(input: tl.tensor,
 
 
 def expand_dims(input: tl.tensor, axis: int, builder: ir.builder) -> tl.tensor:
-    dst_shape = [tl._constexpr_to_value(x) for x in input.shape]
+    dst_shape = list(input.type.shape)
     dst_shape.insert(axis, 1)
-
-    if not input.type.is_block():
-        return splat(input, shape=dst_shape, builder=builder)
-
     ret_ty = tl.block_type(input.type.scalar, dst_shape)
     return tl.tensor(builder.create_expand_dims(input.handle, axis), ret_ty)
 
@@ -695,8 +692,9 @@ def cast(input: tl.tensor,
     dst_sca_ty = dst_ty.scalar
 
     if _is_cuda(builder.arch) and builder.arch < 89 and \
-       (src_sca_ty.is_fp8e4nv() or dst_sca_ty.is_fp8e4nv()):
-        assert False, "fp8e4nv data type is not supported on CUDA arch < 89"
+       (src_sca_ty.is_fp8e4() or dst_sca_ty.is_fp8e4()):
+        warnings.warn("Standard tl.float8e4 format will be deprecated on SM < 89. "
+                      "Please use tl.float8e4b15.", DeprecationWarning)
 
     # Casting with customized floating types involved: fp8 <=> bf16, fp16, fp32, fp64
     if (src_sca_ty.is_fp8() and dst_sca_ty.is_floating()) or \
@@ -990,8 +988,8 @@ def _store_block_pointer(ptr, val, mask, boundary_check, cache, eviction, builde
     if not val.type.is_block():
         val = broadcast_impl_shape(val, block_shape, builder)
     assert val.type.is_block(), "Value argument must be block type or a scalar"
-    assert block_shape == val.type.get_block_shapes(), f"Block shape({block_shape}) and value shape({val.type.get_block_shapes()}) mismatch"
-    assert ptr.type.element_ty.element_ty == val.type.element_ty, f"Block element type({ptr.type.element_ty.element_ty}) and value element type({val.type.element_ty}) mismatch"
+    assert block_shape == val.type.get_block_shapes(), "Block shape and value shape mismatch"
+    assert ptr.type.element_ty.element_ty == val.type.element_ty, "Block element type and value element type mismatch"
 
     elt_ty = ptr.type.element_ty.element_ty
     assert elt_ty != tl.int1, "`tl.int1` should be rewrited in `tl.make_block_ptr`"
@@ -1136,23 +1134,17 @@ def atomic_max(ptr: tl.tensor,
                                                        mask.handle,
                                                        sem),
                              val.type)
+    # ROCM TODO: implement atomic_max/min for f32 as they are supported by MI cards.
     # for float
     # return atomic_smax(i_ptr, i_val) if val >= 0
     # return atomic_umin(i_ptr, i_val) if val < 0
-    if sca_ty not in {tl.float32, tl.float64}:
-        raise TypeError(f"atomic_max not supported for dtype {sca_ty}")
-
-    itype = tl.int32 if sca_ty == tl.float32 else tl.float64
-    zero = full([], 0.0, sca_ty, builder)
-
-    i_val = bitcast(val, itype, builder)
-    i_ptr = bitcast(ptr, tl.pointer_type(itype, 1), builder)
-    pos = greater_equal(val, zero, builder)
-    neg = less_than(val, zero, builder)
+    i_val = bitcast(val, tl.int32, builder)
+    i_ptr = bitcast(ptr, tl.pointer_type(tl.int32, 1), builder)
+    pos = greater_equal(val, tl.tensor(builder.get_fp32(0), sca_ty), builder)
+    neg = less_than(val, tl.tensor(builder.get_fp32(0), sca_ty), builder)
     pos_ret = tl.tensor(builder.create_atomic_rmw(ir.ATOMIC_OP.MAX, i_ptr.handle, i_val.handle, and_(mask, pos, builder).handle, sem), i_val.type)
     neg_ret = tl.tensor(builder.create_atomic_rmw(ir.ATOMIC_OP.UMIN, i_ptr.handle, i_val.handle, and_(mask, neg, builder).handle, sem), i_val.type)
-    ret = where(pos, pos_ret, neg_ret, builder)
-    return bitcast(ret, sca_ty, builder)
+    return where(pos, pos_ret, neg_ret, builder)
 
 
 def atomic_min(ptr: tl.tensor,
@@ -1182,16 +1174,10 @@ def atomic_min(ptr: tl.tensor,
     # for float
     # return atomic_smin(i_ptr, i_val) if val >= 0
     # return atomic_umax(i_ptr, i_val) if val < 0
-    if sca_ty not in {tl.float32, tl.float64}:
-        raise TypeError(f"atomic_min not supported for dtype {sca_ty}")
-
-    itype = tl.int32 if sca_ty == tl.float32 else tl.float64
-    zero = full([], 0.0, sca_ty, builder)
-
-    i_val = bitcast(val, itype, builder)
-    i_ptr = bitcast(ptr, tl.pointer_type(itype, 1), builder)
-    pos = greater_equal(val, zero, builder)
-    neg = less_than(val, zero, builder)
+    i_val = bitcast(val, tl.int32, builder)
+    i_ptr = bitcast(ptr, tl.pointer_type(tl.int32, 1), builder)
+    pos = greater_equal(val, tl.tensor(builder.get_fp32(0), sca_ty), builder)
+    neg = less_than(val, tl.tensor(builder.get_fp32(0), sca_ty), builder)
     pos_ret = tl.tensor(builder.create_atomic_rmw(ir.ATOMIC_OP.MIN,
                                                   i_ptr.handle,
                                                   i_val.handle,
@@ -1204,8 +1190,7 @@ def atomic_min(ptr: tl.tensor,
                                                   and_(mask, neg, builder).handle,
                                                   sem),
                         i_val.type)
-    ret = where(pos, pos_ret, neg_ret, builder)
-    return bitcast(ret, sca_ty, builder)
+    return where(pos, pos_ret, neg_ret, builder)
 
 
 def atomic_add(ptr: tl.tensor,
@@ -1263,61 +1248,65 @@ def atomic_xchg(ptr: tl.tensor,
 #                               Linear Algebra
 # ===----------------------------------------------------------------------===//
 
+def is_hip():
+    try:
+        import torch
+    except ImportError:
+        raise ImportError("Triton requires PyTorch to be installed")
+    return torch.version.hip is not None
 
-def gpu_has_mfma() -> bool:
+
+def gpu_matrix_core_version() -> int:
+    """ Determine matrix core type available on current GPU.
+
+        0 means no tensor cores are available
+        1 corresponds to MFMA in CDNA 1 architecture
+        2 corresponds to MFMA in CDNA 2 architecture
+    """
+
     if not is_hip():
-        return False
-    return True  # mfma supported in ['gfx908', 'gfx90a']
+        return 0
+    arch_info = _triton.get_arch_info()
+    gfx_arch_details = re.search('amd.*', arch_info)
+    if gfx_arch_details is None:
+        return 0
+    gfx_arch_details = gfx_arch_details.group(0).strip().split('--')
+    gpu_name = gfx_arch_details[1].split(':')[0]
+    if gpu_name in ['gfx908']:
+        return 1
+    if gpu_name in ['gfx90a', 'gfx940', 'gfx941']:
+        return 2
+    return 0
 
-
-def mfma_supported(M, N, K, allow_tf32, ret_scalar_ty) -> bool:
-    if not gpu_has_mfma():
+def mfma_supported_granularity(m, n, k) -> bool:
+    granularity_mn = 32
+    granularity_k = 8
+    if m % granularity_mn != 0 or n % granularity_mn != 0:
         return False
-    # TODO: Add check for configurations and types.
+    if k % granularity_k != 0:
+        return False
     return True
 
+def mfma_supported(M, N, K, allow_tf32, ret_scalar_ty) -> bool:
+    matrix_core_version = gpu_matrix_core_version()
+    if matrix_core_version not in [1, 2]:
+        return False
+    if not mfma_supported_granularity(M, N ,K):
+        return False
+    return True
 
 def dot(lhs: tl.tensor,
         rhs: tl.tensor,
-        acc: tl.tensor,
         allow_tf32: bool,
-        max_num_imprecise_acc: int,
         out_dtype: tl.dtype,
         builder: ir.builder) -> tl.tensor:
-    def assert_dtypes_valid(lhs_dtype, rhs_dtype, arch):
-        # Checks for non-cuda archs
-        if not _is_cuda(builder.arch):
-            assert lhs_dtype == rhs_dtype, f"First input ({lhs_dtype}) and second input ({rhs_dtype}) must have the same dtype!"
-            return
-        # Checks for cuda arch
-        if arch < 90:
-            assert not lhs_dtype.is_fp8e4nv() and not rhs_dtype.is_fp8e4nv(), "Dot op does not support fp8e4nv on CUDA arch < 90"
-            if lhs_dtype.is_fp8() and rhs_dtype.is_fp8():
-                return
-            assert lhs_dtype == rhs_dtype, f"First input ({lhs_dtype}) and second input ({rhs_dtype}) must have the same dtype!"
-        else:
-            assert not lhs_dtype.is_fp8e4b15() and not rhs_dtype.is_fp8e4b15(), "Dot op does not support fp8e4b15 on CUDA arch >= 90"
-            assert not lhs_dtype.is_fp8e4b15x4() and not rhs_dtype.is_fp8e4b15x4(), "Dot op does not support fp8e4b15x4 on CUDA arch >= 90"
-            if lhs_dtype.is_int() or rhs_dtype.is_int():
-                assert lhs_dtype == rhs_dtype, f"Both operands must be same type. First operand ({lhs_dtype}) and second operand ({rhs_dtype})"
-                assert lhs_dtype.is_int8() or lhs_dtype.is_uint8(), f"Both operands must be either int8 or uint8. Operand type ({lhs_dtype})"
-            elif lhs_dtype.is_fp8() or rhs_dtype.is_fp8():
-                assert lhs_dtype.is_fp8e4nv() or lhs_dtype.is_fp8e5(), f"Only supports fp8e4nv or fp8e5. First operand ({lhs_dtype})"
-                assert rhs_dtype.is_fp8e4nv() or rhs_dtype.is_fp8e5(), f"Only supports fp8e4nv or fp8e5. Second operand ({rhs_dtype})"
-            else:
-                assert lhs_dtype.is_fp16() or lhs_dtype.is_bf16() or lhs_dtype.is_fp32() or lhs_dtype.is_int1(), f"Unsupported dtype {lhs_dtype}"
-                assert rhs_dtype.is_fp16() or rhs_dtype.is_bf16() or rhs_dtype.is_fp32() or rhs_dtype.is_int1(), f"Unsupported dtype {rhs_dtype}"
-                assert lhs_dtype == rhs_dtype, f"First input ({lhs_dtype}) and second input ({rhs_dtype}) must have the same dtype!"
-
     assert lhs.type.is_block() and rhs.type.is_block()
-
-    assert_dtypes_valid(lhs.dtype, rhs.dtype, builder.arch)
-
+    assert lhs.dtype == rhs.dtype, f"First input ({lhs.dtype}) and second input ({rhs.dtype}) must have the same dtype!"
     assert len(lhs.shape) == 2, f"First input shape ({lhs.shape}) is not two dimensional!"
     assert len(rhs.shape) == 2, f"Second input shape ({rhs.shape}) is not two dimensional!"
     assert lhs.shape[1].value == rhs.shape[0].value, f"First input shape ({lhs.shape}) and second input shape {rhs.shape} are not compatible for matmul (second index of first shape ({lhs.shape[1].value}) must be equal to first index of second shape ({rhs.shape[0].value})"
     assert lhs.shape[0].value >= 16 and lhs.shape[1].value >= 16 \
-        and rhs.shape[1].value >= 16, \
+        and rhs.shape[1].value >= 16,\
         f"All values in both first input shape ({lhs.shape}) and second input shape ({rhs.shape}) must be >= 16!"
     if lhs.type.scalar.is_int():
         assert lhs.type.scalar == tl.int8, "only int8 supported!"
@@ -1325,8 +1314,6 @@ def dot(lhs: tl.tensor,
         assert lhs.shape[1].value >= 32, "small blocks not supported!"
         _0 = builder.get_int32(0)
         ret_scalar_ty = tl.int32
-    elif out_dtype.is_bf16():
-        raise ValueError("out_dtype=bfloat16 is unsupported. Please use out_dtype=float32/float16 and cast with `.to(tl.bfloat16)`")
     elif lhs.type.scalar.is_fp32() or lhs.type.scalar.is_bf16():
         _0 = builder.get_fp32(0)
         ret_scalar_ty = tl.float32
@@ -1361,20 +1348,10 @@ def dot(lhs: tl.tensor,
         ret = tl.tensor(builder.create_dot(lhs.handle, rhs.handle, _0, allow_tf32),
                         ret_ty)
         return cast(ret, ret_scalar_ty, builder)
+
+    _0 = builder.create_splat(_0, [M, N])
     ret_ty = tl.block_type(ret_scalar_ty, [M, N])
-    if acc is None:
-        acc_handle = builder.create_splat(_0, [M, N])
-    else:
-        acc_handle = acc.handle
-        assert acc.type == ret_ty
-
-    # max_num_imprecise_acc only applies to fp8 -> fp32 dot on sm_90
-    if not (_is_cuda(builder.arch) and builder.arch == 90 and lhs.dtype.is_fp8() and rhs.dtype.is_fp8() and ret_scalar_ty.is_fp32()):
-        max_num_imprecise_acc = 0
-    if max_num_imprecise_acc is None:
-        max_num_imprecise_acc = 2**30
-
-    return tl.tensor(builder.create_dot(lhs.handle, rhs.handle, acc_handle, allow_tf32, max_num_imprecise_acc),
+    return tl.tensor(builder.create_dot(lhs.handle, rhs.handle, _0, allow_tf32),
                      ret_ty)
 
 
@@ -1469,7 +1446,7 @@ def associative_scan(
 
 def _check_dtype(dtypes: List[str]) -> T:
     """
-    We're following libdevice's convention to check accepted data types for math functions.
+    We following libdevice's convention to check accepted data types for math functions.
     It is not a good practice to support all data types as accelerators/GPUs don't support
     many float16 and bfloat16 math operations.
     We should let the users know that they are using and invoke explicit cast to convert
@@ -1544,7 +1521,7 @@ def abs(x: tl.tensor, builder: ir.builder) -> tl.tensor:
 
 
 def multiple_of(x: tl.tensor, values: List[int]) -> tl.tensor:
-    if max(1, len(x.shape)) != len(values):
+    if len(x.shape) != len(values):
         raise ValueError("Shape of input to multiple_of does not match the length of values")
     x.handle.set_attr("tt.divisibility", ir.make_attr(values, x.handle.get_context()))
     return x
@@ -1584,8 +1561,6 @@ def device_assert(cond: tl.tensor, msg: str, file_name: str, func_name, lineno: 
 
 
 def _convert_elem_to_ir_value(builder, elem, require_i64):
-    if isinstance(elem, int):
-        elem = tl.constexpr(elem)
     if isinstance(elem, tl.constexpr):
         return builder.get_int64(elem.value) if require_i64 else builder.get_int32(elem.value)
     elif isinstance(elem, tl.tensor):

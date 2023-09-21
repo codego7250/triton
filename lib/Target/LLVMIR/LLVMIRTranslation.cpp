@@ -1,9 +1,6 @@
 #include "triton/Target/LLVMIR/LLVMIRTranslation.h"
-#include "LLVMPasses.h"
-#include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
-#include "mlir/Conversion/IndexToLLVM/IndexToLLVM.h"
+
 #include "mlir/Conversion/Passes.h"
-#include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/LLVMIR/Transforms/Passes.h"
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
@@ -18,29 +15,21 @@
 #include "mlir/Target/LLVMIR/Export.h"
 #include "mlir/Target/LLVMIR/LLVMTranslationInterface.h"
 #include "mlir/Transforms/Passes.h"
-#include "triton/Conversion/NVGPUToLLVM/NVGPUToLLVMPass.h"
 #include "triton/Conversion/TritonGPUToLLVM/TritonGPUToLLVMPass.h"
+#include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Target/LLVMIR/Passes.h"
-#include "triton/Target/PTX/TmaMetadata.h"
 #include "triton/Tools/Sys/GetEnv.hpp"
-#include "triton/Tools/Sys/GetPlatform.hpp"
+#include "llvm/IR/CallingConv.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
-#include "llvm/Passes/OptimizationLevel.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Support/Error.h"
-#include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/SourceMgr.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include <optional>
+
+#include <iostream>
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -51,91 +40,6 @@
 #include <iterator>
 
 namespace fs = std::filesystem;
-
-namespace {
-using namespace llvm;
-
-static std::optional<OptimizationLevel> mapToLevel(unsigned optLevel,
-                                                   unsigned sizeLevel) {
-  switch (optLevel) {
-  case 0:
-    return OptimizationLevel::O0;
-
-  case 1:
-    return OptimizationLevel::O1;
-
-  case 2:
-    switch (sizeLevel) {
-    case 0:
-      return OptimizationLevel::O2;
-
-    case 1:
-      return OptimizationLevel::Os;
-
-    case 2:
-      return OptimizationLevel::Oz;
-    }
-    break;
-  case 3:
-    return OptimizationLevel::O3;
-  }
-  return std::nullopt;
-}
-
-// Create and return a lambda that uses LLVM pass manager builder to set up
-// optimizations based on the given level.
-static std::function<Error(Module *)>
-makeOptimizingPipeline(unsigned optLevel, unsigned sizeLevel,
-                       TargetMachine *targetMachine) {
-  return [optLevel, sizeLevel, targetMachine](Module *m) -> Error {
-    std::optional<OptimizationLevel> ol = mapToLevel(optLevel, sizeLevel);
-    if (!ol) {
-      return make_error<StringError>(
-          formatv("invalid optimization/size level {0}/{1}", optLevel,
-                  sizeLevel)
-              .str(),
-          inconvertibleErrorCode());
-    }
-    LoopAnalysisManager lam;
-    FunctionAnalysisManager fam;
-    CGSCCAnalysisManager cgam;
-    ModuleAnalysisManager mam;
-
-    PipelineTuningOptions tuningOptions;
-    tuningOptions.LoopUnrolling = true;
-    tuningOptions.LoopInterleaving = true;
-    tuningOptions.LoopVectorization = true;
-    // TODO: currently we run SLP vectorizer with an empty target machine. This
-    // cause the vectorizer to create larger vector which could be bad.
-    // Disabling it would currently cause regressions as this pass also applies
-    // some scheduling that helps performance in some cases. We should work on
-    // using NVPTX target instead and address the performance regressions with
-    // some scheduling solution.
-    tuningOptions.SLPVectorization = true;
-
-    PassBuilder pb(targetMachine, tuningOptions);
-
-    pb.registerModuleAnalyses(mam);
-    pb.registerCGSCCAnalyses(cgam);
-    pb.registerFunctionAnalyses(fam);
-    pb.registerLoopAnalyses(lam);
-    pb.crossRegisterProxies(lam, fam, cgam, mam);
-
-    ModulePassManager mpm;
-    pb.registerVectorizerStartEPCallback(
-        [&](llvm::FunctionPassManager &fpm, llvm::OptimizationLevel level) {
-          // Triton generates large structure of scalars which may pessimise
-          // optimizations, we run a pass to break up phi of struct to make sure
-          // all the struct are removed for the following passes.
-          fpm.addPass(BreakStructPhiNodesPass());
-          fpm.addPass(InstCombinePass());
-        });
-    mpm.addPass(pb.buildPerModuleDefaultPipeline(*ol));
-    mpm.run(*m, mam);
-    return Error::success();
-  };
-}
-} // namespace
 
 namespace mlir {
 namespace triton {
@@ -150,7 +54,7 @@ struct NVVMMetadata {
 
 // Add the nvvm related metadata to LLVM IR.
 static void amendLLVMFunc(llvm::Function *func, const NVVMMetadata &metadata,
-                          Target target) {
+                          bool isROCM, const int threadsPerCTA) {
   auto *module = func->getParent();
   auto &ctx = func->getContext();
 
@@ -180,19 +84,19 @@ static void amendLLVMFunc(llvm::Function *func, const NVVMMetadata &metadata,
   }
 
   if (metadata.isKernel) {
-    switch (target) {
-    case Target::NVVM: {
+    if (isROCM) {
+      func->setCallingConv(llvm::CallingConv::AMDGPU_KERNEL);
+      func->addFnAttr("amdgpu-flat-work-group-size",
+                      "1, " + std::to_string(threadsPerCTA));
+      func->addFnAttr("denormal-fp-math-f32", "preserve-sign");
+      func->addFnAttr("amdgpu-unsafe-fp-atomics", "true");
+    } else {
       llvm::Metadata *mdArgs[] = {
           llvm::ValueAsMetadata::get(func), llvm::MDString::get(ctx, "kernel"),
           llvm::ValueAsMetadata::get(
               llvm::ConstantInt::get(llvm::Type::getInt32Ty(ctx), 1))};
       module->getOrInsertNamedMetadata("nvvm.annotations")
           ->addOperand(llvm::MDNode::get(ctx, mdArgs));
-    } break;
-    case Target::ROCDL: {
-      func->setCallingConv(llvm::CallingConv::AMDGPU_KERNEL);
-      func->addFnAttr("amdgpu-flat-work-group-size", "1, 1024");
-    } break;
     }
   }
 }
@@ -337,8 +241,8 @@ static void linkLibdevice(llvm::Module &module) {
   module.addModuleFlag(reflect);
 }
 
-bool linkExternLib(llvm::Module &module, llvm::StringRef name,
-                   llvm::StringRef path, Target target) {
+static bool linkExternLib(llvm::Module &module, llvm::StringRef name,
+                          llvm::StringRef path, bool isROCM) {
   llvm::SMDiagnostic err;
   auto &ctx = module.getContext();
 
@@ -357,7 +261,8 @@ bool linkExternLib(llvm::Module &module, llvm::StringRef name,
     return true;
   }
 
-  if (target == Target::NVVM) {
+  // check if ROCM
+  if (!isROCM) {
     if (name == "libdevice") {
       linkLibdevice(module);
     }
@@ -371,13 +276,12 @@ bool linkExternLib(llvm::Module &module, llvm::StringRef name,
 
 std::unique_ptr<llvm::Module>
 translateLLVMToLLVMIR(llvm::LLVMContext *llvmContext, mlir::ModuleOp module,
-                      Target target) {
+                      bool isROCM) {
   DialectRegistry registry;
   mlir::registerBuiltinDialectTranslation(registry);
   mlir::registerLLVMDialectTranslation(registry);
   mlir::registerROCDLDialectTranslation(registry);
   mlir::registerNVVMDialectTranslation(registry);
-
   module->getContext()->appendDialectRegistry(registry);
 
   llvm::DenseMap<llvm::StringRef, NVVMMetadata> nvvmMetadata;
@@ -399,11 +303,11 @@ translateLLVMToLLVMIR(llvm::LLVMContext *llvmContext, mlir::ModuleOp module,
   // dead code.
   auto externLibs = getExternLibs(module);
   for (auto &lib : externLibs) {
-    if (linkExternLib(*llvmModule, lib.first, lib.second, target))
+    if (linkExternLib(*llvmModule, lib.first, lib.second, isROCM))
       return nullptr;
   }
 
-  auto optPipeline = makeOptimizingPipeline(
+  auto optPipeline = mlir::makeOptimizingTransformer(
       /*optLevel=*/3, /*sizeLevel=*/0,
       /*targetMachine=*/nullptr);
 
@@ -412,10 +316,14 @@ translateLLVMToLLVMIR(llvm::LLVMContext *llvmContext, mlir::ModuleOp module,
     return nullptr;
   }
 
+  const int numWarps = triton::gpu::TritonGPUDialect::getNumWarps(module);
+  const int warpSize = triton::gpu::TritonGPUDialect::getThreadsPerWarp(module);
+  const int threadsPerCTA = numWarps * warpSize;
+
   for (auto &func : llvmModule->functions()) {
     auto it = nvvmMetadata.find(func.getName());
     if (it != nvvmMetadata.end())
-      amendLLVMFunc(&func, it->second, target);
+      amendLLVMFunc(&func, it->second, isROCM, threadsPerCTA);
   }
 
   return llvmModule;
@@ -424,8 +332,7 @@ translateLLVMToLLVMIR(llvm::LLVMContext *llvmContext, mlir::ModuleOp module,
 std::unique_ptr<llvm::Module>
 translateTritonGPUToLLVMIR(llvm::LLVMContext *llvmContext,
                            mlir::ModuleOp module, int computeCapability,
-                           mlir::triton::gpu::TMAMetadataTy &tmaInfos,
-                           Target target) {
+                           bool isROCM) {
   mlir::PassManager pm(module->getContext());
   mlir::registerPassManagerCLOptions();
   if (failed(applyPassManagerCLOptions(pm))) {
@@ -447,14 +354,16 @@ translateTritonGPUToLLVMIR(llvm::LLVMContext *llvmContext,
 
   pm.addPass(mlir::createConvertSCFToCFPass());
   pm.addPass(mlir::createConvertIndexToLLVMPass());
-  pm.addPass(
-      createConvertTritonGPUToLLVMPass(computeCapability, target, &tmaInfos));
-  pm.addPass(createConvertNVGPUToLLVMPass());
+  pm.addPass(createConvertTritonGPUToLLVMPass(computeCapability, isROCM));
   pm.addPass(mlir::createArithToLLVMConversionPass());
   pm.addPass(mlir::createCanonicalizerPass());
   // Simplify the IR
   pm.addPass(mlir::createCSEPass());
   pm.addPass(mlir::createSymbolDCEPass());
+#ifdef USE_ROCM
+  pm.addPass(mlir::createConvertSCFToCFPass());
+  pm.addPass(createConvertControlFlowToLLVMPass());
+#endif
   if (!::triton::tools::getBoolEnv("TRITON_DISABLE_LINE_INFO"))
     pm.addPass(mlir::createLLVMDIScopePass());
 
@@ -463,7 +372,7 @@ translateTritonGPUToLLVMIR(llvm::LLVMContext *llvmContext,
     return nullptr;
   }
 
-  auto llvmIR = translateLLVMToLLVMIR(llvmContext, module, target);
+  auto llvmIR = translateLLVMToLLVMIR(llvmContext, module, isROCM);
   if (!llvmIR) {
     llvm::errs() << "Translate to LLVM IR failed";
     return nullptr;
@@ -474,8 +383,7 @@ translateTritonGPUToLLVMIR(llvm::LLVMContext *llvmContext,
     std::unique_ptr<llvm::raw_string_ostream> ir_ss(
         new llvm::raw_string_ostream(mod_string));
     llvmIR->print(*ir_ss, nullptr);
-    std::cout << "// -----// LLVM IR Dump //----- //\n"
-              << mod_string << std::endl;
+    llvm::dbgs() << "// -----// LLVM IR Dump //----- //\n" << mod_string << '\n';
   }
 
   return llvmIR;

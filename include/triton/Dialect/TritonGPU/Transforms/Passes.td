@@ -14,24 +14,29 @@ def TritonGPUPipeline : Pass<"tritongpu-pipeline", "mlir::ModuleOp"> {
   let constructor = "mlir::createTritonGPUPipelinePass()";
 
   let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
-                           "mlir::triton::nvidia_gpu::TritonNvidiaGPUDialect",
                            "mlir::scf::SCFDialect",
                            "mlir::arith::ArithDialect"];
 
   let options = [
     Option<"numStages", "num-stages",
-           "int32_t", /*default*/"3",
-           "number of pipeline stages">,
-    Option<"numWarps", "num-warps",
-           "int32_t", /*default*/"4",
-           "number of warps per block">,
-    Option<"numCTAs", "num-ctas",
-           "int32_t", /*default*/"1",
-           "number of CTAs per CGA">,
-    Option<"computeCapability", "compute-capability",
-           "int32_t", /*default*/"80",
-           "device compute capability">
+           "int32_t", /*default*/"2",
+           "number of pipeline stages">
   ];
+}
+
+def TritonGPUStreamPipeline : Pass<"tritongpu-stream-pipeline", "mlir::ModuleOp"> {
+  let summary = "pipeline";
+
+  let description = [{
+    Pipeline global loads through registers to shared memory while computing on previous
+    tile
+  }];
+
+  let constructor = "mlir::createTritonGPUStreamPipelinePass()";
+
+  let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
+                           "mlir::scf::SCFDialect",
+                           "mlir::arith::ArithDialect"];
 }
 
 def TritonGPUPrefetch : Pass<"tritongpu-prefetch", "mlir::ModuleOp"> {
@@ -60,7 +65,6 @@ def TritonGPUAccelerateMatmul : Pass<"tritongpu-accelerate-matmul", "mlir::Modul
   let constructor = "mlir::createTritonGPUAccelerateMatmulPass()";
 
   let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
-                           "mlir::triton::nvidia_gpu::TritonNvidiaGPUDialect",
                            "mlir::triton::TritonDialect"];
 
   let options = [
@@ -81,7 +85,6 @@ def TritonGPUOptimizeDotOperands : Pass<"tritongpu-optimize-dot-operands", "mlir
   let constructor = "mlir::createTritonGPUOptimizeDotOperandsPass()";
 
   let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
-                           "mlir::triton::nvidia_gpu::TritonNvidiaGPUDialect",
                            "mlir::triton::TritonDialect"];
 }
 
@@ -108,20 +111,6 @@ def TritonGPURemoveLayoutConversions : Pass<"tritongpu-remove-layout-conversions
 
   let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
                            "mlir::triton::TritonDialect"];
-
-}
-
-def TritonGPUOptimizeEpilogue : Pass<"tritongpu-optimize-epilogue", "mlir::ModuleOp"> {
-  let summary = "Optimize epilogue: (1) Store accumulators directly without going thorough SMEM in epilogue.";
-
-  let description = [{
-  }];
-
-  let constructor = "mlir::createTritonGPUOptimizeEpiloguePass()";
-
-  let dependentDialects = ["mlir::triton::gpu::TritonGPUDialect",
-                           "mlir::triton::TritonDialect"];
-
 }
 
 def TritonGPUReorderInstructions: Pass<"tritongpu-reorder-instructions", "mlir::ModuleOp"> {

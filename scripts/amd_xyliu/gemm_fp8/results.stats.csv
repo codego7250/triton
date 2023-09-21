@@ -1,0 +1,6 @@
+"Name","Calls","TotalDurationNs","AverageNs","Percentage"
+"void at::native::modern::elementwise_kernel<at::native::FillFunctor<int>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<int>, at::detail::Array<char*, 1>) [clone .kd]",986,183234203,185835,94.71239393112945
+"matmul_kernel_0d1d2d3d4c5d6c7d8c.kd",1231,10159524,8253,5.251382239159597
+"_ZN2at6native12_GLOBAL__N_143distribution_elementwise_grid_stride_kernelIfLi4EZNS0_9templates4cuda20normal_and_transformIN3c104HalfEfLm4EPNS_17CUDAGeneratorImplEZZZNS4_13normal_kernelIS9_EEvRNS_6TensorEddT_ENKUlvE_clEvENKUlvE4_clEvEUlfE_EEvRNS_18TensorIteratorBaseET2_T3_EUlP25hiprandStatePhilox4_32_10E0_ZNS1_27distribution_nullary_kernelIS7_fLi4ES9_SN_SG_EEvSI_SJ_RKSK_T4_EUlifE_EEviNS_15PhiloxCudaStateET1_SJ_.kd",2,58080,29040,0.030021119144006094
+"kernel_0d1d2d.kd",1,8480,8480,0.0043832488006400085
+"void at::native::modern::elementwise_kernel<at::native::FillFunctor<float>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<float>, at::detail::Array<char*, 1>) [clone .kd]",1,3520,3520,0.0018194617663033995

@@ -1,0 +1,8 @@
+"Name","Calls","TotalDurationNs","AverageNs","Percentage"
+"void at::native::modern::elementwise_kernel<at::native::FillFunctor<int>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<int>, at::detail::Array<char*, 1>) [clone .kd]",425,79451742,186945,81.05884381873399
+"matmul_kernel_0d1d2d3d4c5d6c7d8c.kd",531,18458102,34761,18.83146133168813
+"_ZN2at6native12_GLOBAL__N_143distribution_elementwise_grid_stride_kernelIfLi4EZNS0_9templates4cuda20normal_and_transformIN3c104HalfEfLm4EPNS_17CUDAGeneratorImplEZZZNS4_13normal_kernelIS9_EEvRNS_6TensorEddT_ENKUlvE_clEvENKUlvE4_clEvEUlfE_EEvRNS_18TensorIteratorBaseET2_T3_EUlP25hiprandStatePhilox4_32_10E0_ZNS1_27distribution_nullary_kernelIS7_fLi4ES9_SN_SG_EEvSI_SJ_RKSK_T4_EUlifE_EEviNS_15PhiloxCudaStateET1_SJ_.kd",2,58240,29120,0.05941804352134995
+"Cijk_Ailk_Bljk_HHS_BH_MT32x16x64_MI16x16x16x1_SN_1LDSB0_APM1_ABV0_ACED0_AF0EM4_AF1EM1_AMAS3_ASE_ASGT_ASLT117_ASAE01_ASCE01_ASEM512_AAC0_BL1_BS1_DTL0_DTVA0_DVO0_ETSP_EPS0_FL0_GRPM1_GRVW2_GSU8_GSUAMB_GLS0_ISA90a_IU1_K1_KLA_LBSPP128_LPA2_LPB4_LDL1_LRVW4_LWPMn1_LDW1_FMA_MIAV1_MDA2_MO40_NTA0_NTB0_NTC0_NTD3_NEPBS0_NLCA1_NLCB1_ONLL1_OPLV0_PK0_PAP0_PGR2_PLR1_RK0_SIA3_SS0_SU0_SUM0_SUS0_SCIUI1_SPO1_SRVW0_SSO0_SVW4_SNLL0_TT1_16_TLDS1_USFGROn1_VAW1_VSn1_VW4_WSGRA0_WSGRB0_WS64_WG32_4_1_WGM1.kd",1,23040,23040,0.023506039195259322
+"kernel_0d1d2d.kd",1,16160,16160,0.016486874713341607
+"Cijk_H_PostGSU.kd",1,7040,7040,0.007182400865218126
+"void at::native::modern::elementwise_kernel<at::native::FillFunctor<c10::Half>, at::detail::Array<char*, 1> >(int, at::native::FillFunctor<c10::Half>, at::detail::Array<char*, 1>) [clone .kd]",1,3040,3040,0.0031014912827078273

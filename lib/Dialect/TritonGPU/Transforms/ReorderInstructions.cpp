@@ -17,7 +17,6 @@
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/Transforms/Passes.h"
 #include "triton/Dialect/TritonGPU/Transforms/TritonGPUConversion.h"
-#include "triton/Dialect/TritonGPU/Transforms/Utility.h"
 #define GEN_PASS_CLASSES
 #include "triton/Dialect/TritonGPU/Transforms/Passes.h.inc"
 
@@ -48,12 +47,6 @@ public:
     // Sink conversions into loops when they will increase
     // register pressure
     DenseMap<Operation *, Operation *> opToMove;
-    auto moveAfter = [](Operation *lhs, Operation *rhs) {
-      auto lhsId = getWSRoleId(lhs);
-      auto rhsId = getWSRoleId(rhs);
-      if (lhsId == rhsId)
-        lhs->moveAfter(rhs);
-    };
     m.walk([&](triton::gpu::ConvertLayoutOp op) {
       if (!willIncreaseRegisterPressure(op))
         return;
@@ -72,12 +65,23 @@ public:
     m.walk([&](triton::gpu::ConvertLayoutOp op) {
       auto dstType = op.getResult().getType().cast<RankedTensorType>();
       auto dstEncoding = dstType.getEncoding();
+      // Enable moving shared->dot conversion after dependent load.
+      // For the Q tensor in flash attention, the shared->dot conversion acts as
+      // a loop invariant. Moving this conversion post dependent load,
+      // will hoist the conversion outside the loop. Consequently, during
+      // computation, we will be able to maintain the Q tensor in the registers.
+#ifdef USE_ROCM
+      if (!dstEncoding.isa<triton::gpu::SharedEncodingAttr>() &&
+          !dstEncoding.isa<triton::gpu::DotOperandEncodingAttr>())
+        return;
+#elif
       if (!dstEncoding.isa<triton::gpu::SharedEncodingAttr>())
         return;
+#endif
       Operation *argOp = op.getOperand().getDefiningOp();
       if (!argOp)
         return;
-      moveAfter(op, argOp);
+      op->moveAfter(argOp);
     });
     // Move transpositions just after their definition
     opToMove.clear();
@@ -85,10 +89,17 @@ public:
       Operation *argOp = op.getOperand().getDefiningOp();
       if (!argOp)
         return;
-      moveAfter(op, argOp);
+      op->moveAfter(argOp);
     });
     // Move `dot` operand so that conversions to opIdx=1 happens after
     // conversions to opIdx=0
+#ifdef USE_ROCM
+    // Skip this reordering for ROCm backend since it will sink shared->dot
+    // conversion for Q tensor in flash attention into the main loop. This
+    // increases LDS pressure and requires additional computation in every loop
+    // iteration.
+    return;
+#endif
     m.walk([&](triton::gpu::ConvertLayoutOp op) {
       auto dstType = op.getResult().getType().cast<RankedTensorType>();
       auto dstEncoding =
@@ -111,7 +122,7 @@ public:
       // after the conversion to OpIdx=0.
       if (!dom.dominates(op.getOperation(), AOp.getOperation()))
         return;
-      moveAfter(op, AOp);
+      op->moveAfter(AOp);
     });
     return;
   }

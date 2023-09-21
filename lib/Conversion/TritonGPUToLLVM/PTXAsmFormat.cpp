@@ -1,4 +1,5 @@
 #include "triton/Conversion/TritonGPUToLLVM/PTXAsmFormat.h"
+#include "triton/Conversion/TritonGPUToLLVM/AsmFormat.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "triton/Conversion/TritonGPUToLLVM/AsmFormat.h"
@@ -47,14 +48,6 @@ PTXBuilder::Operand *PTXBuilder::newOperand(StringRef constraint, bool init) {
   if (init) {
     initOperand(opr);
   }
-  return opr;
-}
-
-PTXBuilder::Operand *PTXBuilder::newOperand(unsigned operandIndex) {
-  assert(operandIndex < oprCounter && "operand index out of range");
-  auto *opr = newOperand();
-  opr->idx = oprCounter++;
-  opr->constraint = std::to_string(operandIndex);
   return opr;
 }
 

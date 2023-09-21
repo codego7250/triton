@@ -23,7 +23,7 @@ def block_copy_kernel(a_ptr, b_ptr, N, BLOCK_SIZE: tl.constexpr, padding_option:
                           for padding in ("zero", "nan")])
 def test_block_copy(dtype_str, n, padding_option):
     capability = torch.cuda.get_device_capability()
-    if capability[0] >= 9:
+    if torch.version.hip is None and capability[0] >= 9:
         pytest.skip("Hopper support is working in progress")
 
     dtype = getattr(torch, dtype_str)
@@ -82,7 +82,7 @@ def matmul_no_scf_with_advance_kernel(
 ])
 def test_block_ptr_matmul_no_scf(shape, num_warps):
     capability = torch.cuda.get_device_capability()
-    if capability[0] >= 9:
+    if torch.version.hip is None and capability[0] >= 9:
         pytest.skip("Hopper support is working in progress")
 
     m, n, k = shape
@@ -99,4 +99,4 @@ def test_block_ptr_matmul_no_scf(shape, num_warps):
                                             BLOCK_M=m, BLOCK_N=n, BLOCK_K=k,
                                             num_warps=num_warps)
     golden = torch.matmul(a, b)
-    torch.testing.assert_close(c, golden, check_dtype=False)
+    torch.testing.assert_allclose(c, golden)

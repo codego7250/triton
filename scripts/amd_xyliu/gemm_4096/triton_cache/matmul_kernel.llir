@@ -1,0 +1,1148 @@
+; ModuleID = 'LLVMDialectModule'
+source_filename = "LLVMDialectModule"
+
+@global_smem = external addrspace(3) global [0 x i8]
+
+; Function Attrs: nofree nounwind
+define amdgpu_kernel void @matmul_kernel_0d1d2d3d4c5d6c7d8c(ptr addrspace(1) nocapture readonly %0, ptr addrspace(1) nocapture readonly %1, ptr addrspace(1) nocapture writeonly %2, i32 %3, i32 %4, i32 %5) local_unnamed_addr #0 {
+  %7 = tail call i32 @llvm.amdgcn.workitem.id.x()
+  %8 = and i32 %7, 63
+  %9 = lshr i32 %7, 6
+  %10 = lshr i32 %8, 2
+  %11 = and i32 %9, 7
+  %12 = shl nuw nsw i32 %11, 4
+  %13 = or i32 %12, %10
+  %14 = shl i32 %7, 3
+  %15 = and i32 %14, 120
+  %16 = lshr i32 %8, 5
+  %17 = shl nuw nsw i32 %9, 1
+  %18 = and i32 %17, 126
+  %19 = or i32 %18, %16
+  %20 = add nuw nsw i32 %19, 16
+  %21 = add nuw nsw i32 %19, 32
+  %22 = add nuw nsw i32 %19, 48
+  %23 = and i32 %7, 31
+  %24 = shl nuw nsw i32 %23, 2
+  %25 = and i32 %14, 24
+  %26 = lshr i32 %8, 4
+  %27 = shl nuw nsw i32 %11, 2
+  %28 = or i32 %27, %26
+  %29 = shl nuw nsw i32 %9, 5
+  %30 = and i32 %29, 32
+  %31 = lshr i32 %7, 2
+  %32 = and i32 %31, 96
+  %33 = shl nuw nsw i32 %16, 2
+  %34 = or i32 %33, %30
+  %35 = or i32 %32, %23
+  %36 = tail call i32 @llvm.amdgcn.workgroup.id.x()
+  %37 = tail call i32 @llvm.amdgcn.workgroup.id.y()
+  %.frozen = freeze i32 %36
+  %38 = sdiv i32 %.frozen, 32
+  %39 = mul i32 %38, 32
+  %.decomposed = sub i32 %.frozen, %39
+  %40 = shl i32 %38, 7
+  %41 = or i32 %13, %40
+  %42 = or i32 %19, %40
+  %43 = add i32 %20, %40
+  %44 = add i32 %21, %40
+  %45 = add i32 %22, %40
+  %46 = add i32 %42, 64
+  %47 = add i32 %42, 80
+  %48 = add i32 %42, 96
+  %49 = add i32 %42, 112
+  %50 = shl nsw i32 %.decomposed, 7
+  %51 = or i32 %50, %15
+  %52 = or i32 %51, 2
+  %53 = or i32 %51, 4
+  %54 = or i32 %51, 6
+  %55 = or i32 %50, %24
+  %56 = or i32 %55, 1
+  %57 = or i32 %55, 2
+  %58 = or i32 %55, 3
+  %59 = shl i32 %37, 5
+  %60 = or i32 %25, %59
+  %61 = or i32 %60, 2
+  %62 = or i32 %60, 4
+  %63 = or i32 %60, 6
+  %64 = or i32 %28, %59
+  %65 = mul i32 %41, %3
+  %66 = sext i32 %65 to i64
+  %67 = getelementptr half, ptr addrspace(1) %0, i64 %66
+  %68 = sext i32 %60 to i64
+  %69 = getelementptr half, ptr addrspace(1) %67, i64 %68
+  %70 = sext i32 %61 to i64
+  %71 = getelementptr half, ptr addrspace(1) %67, i64 %70
+  %72 = sext i32 %62 to i64
+  %73 = getelementptr half, ptr addrspace(1) %67, i64 %72
+  %74 = sext i32 %63 to i64
+  %75 = getelementptr half, ptr addrspace(1) %67, i64 %74
+  %76 = mul i32 %64, %4
+  %77 = sext i32 %76 to i64
+  %78 = getelementptr half, ptr addrspace(1) %1, i64 %77
+  %79 = sext i32 %51 to i64
+  %80 = getelementptr half, ptr addrspace(1) %78, i64 %79
+  %81 = sext i32 %52 to i64
+  %82 = getelementptr half, ptr addrspace(1) %78, i64 %81
+  %83 = sext i32 %53 to i64
+  %84 = getelementptr half, ptr addrspace(1) %78, i64 %83
+  %85 = sext i32 %54 to i64
+  %86 = getelementptr half, ptr addrspace(1) %78, i64 %85
+  %87 = icmp slt i32 %41, 4096
+  %88 = icmp slt i32 %42, 4096
+  %89 = icmp slt i32 %43, 4096
+  %90 = icmp slt i32 %44, 4096
+  %91 = icmp slt i32 %45, 4096
+  %92 = icmp slt i32 %46, 4096
+  %93 = icmp slt i32 %47, 4096
+  %94 = icmp slt i32 %48, 4096
+  %95 = icmp slt i32 %49, 4096
+  %96 = icmp slt i32 %60, 4096
+  %97 = and i1 %96, %87
+  %98 = icmp slt i32 %64, 4096
+  %99 = shl i32 %4, 5
+  br i1 %97, label %100, label %109
+
+100:                                              ; preds = %6
+  %101 = addrspacecast ptr addrspace(1) %69 to ptr
+  %102 = load <2 x half>, ptr %101, align 4
+  %103 = addrspacecast ptr addrspace(1) %71 to ptr
+  %104 = load <2 x half>, ptr %103, align 4
+  %105 = addrspacecast ptr addrspace(1) %73 to ptr
+  %106 = load <2 x half>, ptr %105, align 4
+  %107 = addrspacecast ptr addrspace(1) %75 to ptr
+  %108 = load <2 x half>, ptr %107, align 4
+  br label %109
+
+109:                                              ; preds = %6, %100
+  %110 = phi <2 x half> [ %106, %100 ], [ zeroinitializer, %6 ]
+  %111 = phi <2 x half> [ %102, %100 ], [ zeroinitializer, %6 ]
+  %112 = phi <2 x half> [ %104, %100 ], [ zeroinitializer, %6 ]
+  %113 = phi <2 x half> [ %108, %100 ], [ zeroinitializer, %6 ]
+  %114 = shl nuw nsw i32 %13, 5
+  %115 = or i32 %114, %25
+  %116 = zext i32 %115 to i64
+  %117 = getelementptr half, ptr addrspace(3) @global_smem, i64 %116
+  %118 = getelementptr half, ptr addrspace(3) %117, i64 1
+  %119 = getelementptr half, ptr addrspace(3) %117, i64 2
+  %120 = getelementptr half, ptr addrspace(3) %117, i64 3
+  %121 = getelementptr half, ptr addrspace(3) %117, i64 4
+  %122 = getelementptr half, ptr addrspace(3) %117, i64 5
+  %123 = getelementptr half, ptr addrspace(3) %117, i64 6
+  %124 = getelementptr half, ptr addrspace(3) %117, i64 7
+  %125 = shufflevector <2 x half> %111, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %125, ptr addrspace(3) %117, align 2
+  %126 = shufflevector <2 x half> %111, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %126, ptr addrspace(3) %118, align 2
+  %127 = shufflevector <2 x half> %112, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %127, ptr addrspace(3) %119, align 2
+  %128 = shufflevector <2 x half> %112, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %128, ptr addrspace(3) %120, align 2
+  %129 = shufflevector <2 x half> %110, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %129, ptr addrspace(3) %121, align 2
+  %130 = shufflevector <2 x half> %110, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %130, ptr addrspace(3) %122, align 2
+  %131 = shufflevector <2 x half> %113, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %131, ptr addrspace(3) %123, align 2
+  %132 = shufflevector <2 x half> %113, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %132, ptr addrspace(3) %124, align 2
+  br i1 %98, label %133, label %142
+
+133:                                              ; preds = %109
+  %134 = addrspacecast ptr addrspace(1) %80 to ptr
+  %135 = load <2 x half>, ptr %134, align 4
+  %136 = addrspacecast ptr addrspace(1) %82 to ptr
+  %137 = load <2 x half>, ptr %136, align 4
+  %138 = addrspacecast ptr addrspace(1) %84 to ptr
+  %139 = load <2 x half>, ptr %138, align 4
+  %140 = addrspacecast ptr addrspace(1) %86 to ptr
+  %141 = load <2 x half>, ptr %140, align 4
+  br label %142
+
+142:                                              ; preds = %109, %133
+  %143 = phi <2 x half> [ %139, %133 ], [ zeroinitializer, %109 ]
+  %144 = phi <2 x half> [ %135, %133 ], [ zeroinitializer, %109 ]
+  %145 = phi <2 x half> [ %137, %133 ], [ zeroinitializer, %109 ]
+  %146 = phi <2 x half> [ %141, %133 ], [ zeroinitializer, %109 ]
+  %147 = shl nuw nsw i32 %28, 7
+  %148 = or i32 %147, %15
+  %149 = zext i32 %148 to i64
+  %150 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %149
+  %151 = getelementptr half, ptr addrspace(3) %150, i64 1
+  %152 = getelementptr half, ptr addrspace(3) %150, i64 2
+  %153 = getelementptr half, ptr addrspace(3) %150, i64 3
+  %154 = getelementptr half, ptr addrspace(3) %150, i64 4
+  %155 = getelementptr half, ptr addrspace(3) %150, i64 5
+  %156 = getelementptr half, ptr addrspace(3) %150, i64 6
+  %157 = getelementptr half, ptr addrspace(3) %150, i64 7
+  %158 = shufflevector <2 x half> %144, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %158, ptr addrspace(3) %150, align 2
+  %159 = shufflevector <2 x half> %144, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %159, ptr addrspace(3) %151, align 2
+  %160 = shufflevector <2 x half> %145, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %160, ptr addrspace(3) %152, align 2
+  %161 = shufflevector <2 x half> %145, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %161, ptr addrspace(3) %153, align 2
+  %162 = shufflevector <2 x half> %143, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %162, ptr addrspace(3) %154, align 2
+  %163 = shufflevector <2 x half> %143, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %163, ptr addrspace(3) %155, align 2
+  %164 = shufflevector <2 x half> %146, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %164, ptr addrspace(3) %156, align 2
+  %165 = shufflevector <2 x half> %146, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %165, ptr addrspace(3) %157, align 2
+  %166 = getelementptr half, ptr addrspace(1) %69, i64 32
+  %167 = getelementptr half, ptr addrspace(1) %71, i64 32
+  %168 = getelementptr half, ptr addrspace(1) %73, i64 32
+  %169 = getelementptr half, ptr addrspace(1) %75, i64 32
+  %170 = sext i32 %99 to i64
+  %171 = getelementptr half, ptr addrspace(1) %80, i64 %170
+  %172 = getelementptr half, ptr addrspace(1) %82, i64 %170
+  %173 = getelementptr half, ptr addrspace(1) %84, i64 %170
+  %174 = getelementptr half, ptr addrspace(1) %86, i64 %170
+  br i1 %97, label %175, label %184
+
+175:                                              ; preds = %142
+  %176 = addrspacecast ptr addrspace(1) %166 to ptr
+  %177 = load <2 x half>, ptr %176, align 4
+  %178 = addrspacecast ptr addrspace(1) %167 to ptr
+  %179 = load <2 x half>, ptr %178, align 4
+  %180 = addrspacecast ptr addrspace(1) %168 to ptr
+  %181 = load <2 x half>, ptr %180, align 4
+  %182 = addrspacecast ptr addrspace(1) %169 to ptr
+  %183 = load <2 x half>, ptr %182, align 4
+  br label %184
+
+184:                                              ; preds = %142, %175
+  %185 = phi <2 x half> [ %181, %175 ], [ zeroinitializer, %142 ]
+  %186 = phi <2 x half> [ %177, %175 ], [ zeroinitializer, %142 ]
+  %187 = phi <2 x half> [ %179, %175 ], [ zeroinitializer, %142 ]
+  %188 = phi <2 x half> [ %183, %175 ], [ zeroinitializer, %142 ]
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %189 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 8192), i64 %116
+  %190 = getelementptr half, ptr addrspace(3) %189, i64 1
+  %191 = getelementptr half, ptr addrspace(3) %189, i64 2
+  %192 = getelementptr half, ptr addrspace(3) %189, i64 3
+  %193 = getelementptr half, ptr addrspace(3) %189, i64 4
+  %194 = getelementptr half, ptr addrspace(3) %189, i64 5
+  %195 = getelementptr half, ptr addrspace(3) %189, i64 6
+  %196 = getelementptr half, ptr addrspace(3) %189, i64 7
+  %197 = shufflevector <2 x half> %186, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %197, ptr addrspace(3) %189, align 2
+  %198 = shufflevector <2 x half> %186, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %198, ptr addrspace(3) %190, align 2
+  %199 = shufflevector <2 x half> %187, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %199, ptr addrspace(3) %191, align 2
+  %200 = shufflevector <2 x half> %187, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %200, ptr addrspace(3) %192, align 2
+  %201 = shufflevector <2 x half> %185, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %201, ptr addrspace(3) %193, align 2
+  %202 = shufflevector <2 x half> %185, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %202, ptr addrspace(3) %194, align 2
+  %203 = shufflevector <2 x half> %188, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %203, ptr addrspace(3) %195, align 2
+  %204 = shufflevector <2 x half> %188, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %204, ptr addrspace(3) %196, align 2
+  br i1 %98, label %205, label %214
+
+205:                                              ; preds = %184
+  %206 = addrspacecast ptr addrspace(1) %171 to ptr
+  %207 = load <2 x half>, ptr %206, align 4
+  %208 = addrspacecast ptr addrspace(1) %172 to ptr
+  %209 = load <2 x half>, ptr %208, align 4
+  %210 = addrspacecast ptr addrspace(1) %173 to ptr
+  %211 = load <2 x half>, ptr %210, align 4
+  %212 = addrspacecast ptr addrspace(1) %174 to ptr
+  %213 = load <2 x half>, ptr %212, align 4
+  br label %214
+
+214:                                              ; preds = %184, %205
+  %215 = phi <2 x half> [ %211, %205 ], [ zeroinitializer, %184 ]
+  %216 = phi <2 x half> [ %207, %205 ], [ zeroinitializer, %184 ]
+  %217 = phi <2 x half> [ %209, %205 ], [ zeroinitializer, %184 ]
+  %218 = phi <2 x half> [ %213, %205 ], [ zeroinitializer, %184 ]
+  %219 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 32768), i64 %149
+  %220 = getelementptr half, ptr addrspace(3) %219, i64 1
+  %221 = getelementptr half, ptr addrspace(3) %219, i64 2
+  %222 = getelementptr half, ptr addrspace(3) %219, i64 3
+  %223 = getelementptr half, ptr addrspace(3) %219, i64 4
+  %224 = getelementptr half, ptr addrspace(3) %219, i64 5
+  %225 = getelementptr half, ptr addrspace(3) %219, i64 6
+  %226 = getelementptr half, ptr addrspace(3) %219, i64 7
+  %227 = shufflevector <2 x half> %216, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %227, ptr addrspace(3) %219, align 2
+  %228 = shufflevector <2 x half> %216, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %228, ptr addrspace(3) %220, align 2
+  %229 = shufflevector <2 x half> %217, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %229, ptr addrspace(3) %221, align 2
+  %230 = shufflevector <2 x half> %217, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %230, ptr addrspace(3) %222, align 2
+  %231 = shufflevector <2 x half> %215, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %231, ptr addrspace(3) %223, align 2
+  %232 = shufflevector <2 x half> %215, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %232, ptr addrspace(3) %224, align 2
+  %233 = shufflevector <2 x half> %218, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %233, ptr addrspace(3) %225, align 2
+  %234 = shufflevector <2 x half> %218, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %234, ptr addrspace(3) %226, align 2
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %235 = or i32 %30, %23
+  %236 = or i32 %33, 8
+  %237 = or i32 %235, 64
+  %238 = shl nuw nsw i32 %235, 5
+  %239 = or i32 %238, %33
+  %240 = or i32 %238, %236
+  %241 = shl nuw nsw i32 %237, 5
+  %242 = or i32 %241, %33
+  %243 = or i32 %241, %236
+  %244 = zext i32 %239 to i64
+  %245 = zext i32 %240 to i64
+  %246 = zext i32 %242 to i64
+  %247 = zext i32 %243 to i64
+  %248 = or i32 %33, 1
+  %249 = or i32 %33, 2
+  %250 = or i32 %33, 3
+  %251 = or i32 %33, 9
+  %252 = or i32 %33, 10
+  %253 = or i32 %33, 11
+  %254 = shl nuw nsw i32 %16, 9
+  %255 = or i32 %254, %35
+  %256 = shl nuw nsw i32 %248, 7
+  %257 = or i32 %256, %35
+  %258 = shl nuw nsw i32 %249, 7
+  %259 = or i32 %258, %35
+  %260 = shl nuw nsw i32 %250, 7
+  %261 = or i32 %260, %35
+  %262 = shl nuw nsw i32 %236, 7
+  %263 = or i32 %262, %35
+  %264 = shl nuw nsw i32 %251, 7
+  %265 = or i32 %264, %35
+  %266 = shl nuw nsw i32 %252, 7
+  %267 = or i32 %266, %35
+  %268 = shl nuw nsw i32 %253, 7
+  %269 = or i32 %268, %35
+  %270 = zext i32 %255 to i64
+  %271 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %270
+  %272 = load <1 x half>, ptr addrspace(3) %271, align 2
+  %273 = zext i32 %257 to i64
+  %274 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %273
+  %275 = load <1 x half>, ptr addrspace(3) %274, align 2
+  %276 = shufflevector <1 x half> %272, <1 x half> %275, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
+  %277 = zext i32 %259 to i64
+  %278 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %277
+  %279 = load <1 x half>, ptr addrspace(3) %278, align 2
+  %280 = shufflevector <1 x half> %279, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %281 = shufflevector <4 x half> %276, <4 x half> %280, <4 x i32> <i32 0, i32 1, i32 4, i32 poison>
+  %282 = zext i32 %261 to i64
+  %283 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %282
+  %284 = load <1 x half>, ptr addrspace(3) %283, align 2
+  %285 = shufflevector <1 x half> %284, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %286 = shufflevector <4 x half> %281, <4 x half> %285, <4 x i32> <i32 0, i32 1, i32 2, i32 4>
+  %287 = zext i32 %263 to i64
+  %288 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %287
+  %289 = load <1 x half>, ptr addrspace(3) %288, align 2
+  %290 = zext i32 %265 to i64
+  %291 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %290
+  %292 = load <1 x half>, ptr addrspace(3) %291, align 2
+  %293 = shufflevector <1 x half> %289, <1 x half> %292, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
+  %294 = zext i32 %267 to i64
+  %295 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %294
+  %296 = load <1 x half>, ptr addrspace(3) %295, align 2
+  %297 = shufflevector <1 x half> %296, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %298 = shufflevector <4 x half> %293, <4 x half> %297, <4 x i32> <i32 0, i32 1, i32 4, i32 poison>
+  %299 = zext i32 %269 to i64
+  %300 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %299
+  %301 = load <1 x half>, ptr addrspace(3) %300, align 2
+  %302 = shufflevector <1 x half> %301, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %303 = shufflevector <4 x half> %298, <4 x half> %302, <4 x i32> <i32 0, i32 1, i32 2, i32 4>
+  br label %304
+
+304:                                              ; preds = %214, %617
+  %.pn41168 = phi <4 x half> [ %303, %214 ], [ %677, %617 ]
+  %.pn43167 = phi <4 x half> [ %286, %214 ], [ %664, %617 ]
+  %.pn166 = phi ptr addrspace(3) [ @global_smem, %214 ], [ %639, %617 ]
+  %305 = phi i32 [ 1, %214 ], [ %565, %617 ]
+  %306 = phi i32 [ 2, %214 ], [ %651, %617 ]
+  %.pn19165 = phi ptr addrspace(1) [ %174, %214 ], [ %574, %617 ]
+  %.pn23164 = phi ptr addrspace(1) [ %173, %214 ], [ %573, %617 ]
+  %.pn27163 = phi ptr addrspace(1) [ %172, %214 ], [ %572, %617 ]
+  %.pn31162 = phi ptr addrspace(1) [ %171, %214 ], [ %571, %617 ]
+  %.pn3161 = phi ptr addrspace(1) [ %169, %214 ], [ %570, %617 ]
+  %.pn7160 = phi ptr addrspace(1) [ %168, %214 ], [ %569, %617 ]
+  %.pn11159 = phi ptr addrspace(1) [ %167, %214 ], [ %568, %617 ]
+  %.pn15158 = phi ptr addrspace(1) [ %166, %214 ], [ %567, %617 ]
+  %307 = phi { ptr addrspace(3), i32, i32, i32, i32 } [ { ptr addrspace(3) getelementptr (i8, ptr addrspace(3) @global_smem, i32 24576), i32 128, i32 1, i32 0, i32 0 }, %214 ], [ %650, %617 ]
+  %308 = phi { ptr addrspace(3), i32, i32, i32, i32 } [ { ptr addrspace(3) @global_smem, i32 32, i32 1, i32 0, i32 0 }, %214 ], [ %644, %617 ]
+  %309 = phi { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } [ zeroinitializer, %214 ], [ %564, %617 ]
+  %310 = phi i32 [ 0, %214 ], [ %678, %617 ]
+  %.pn33.in = getelementptr half, ptr addrspace(3) %.pn166, i64 %247
+  %.pn35.in = getelementptr half, ptr addrspace(3) %.pn166, i64 %246
+  %.pn37.in = getelementptr half, ptr addrspace(3) %.pn166, i64 %245
+  %.pn39.in = getelementptr half, ptr addrspace(3) %.pn166, i64 %244
+  %.pn33 = load <4 x half>, ptr addrspace(3) %.pn33.in, align 8
+  %.pn35 = load <4 x half>, ptr addrspace(3) %.pn35.in, align 8
+  %.pn37 = load <4 x half>, ptr addrspace(3) %.pn37.in, align 8
+  %.pn39 = load <4 x half>, ptr addrspace(3) %.pn39.in, align 8
+  %311 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %308, 0
+  %312 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %308, 1
+  %313 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %308, 2
+  %314 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %308, 3
+  %315 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %308, 4
+  %316 = add i32 %315, 16
+  %317 = shl i32 %313, 4
+  %318 = sext i32 %317 to i64
+  %319 = getelementptr half, ptr addrspace(3) %311, i64 %318
+  %320 = add i32 %314, %235
+  %321 = add i32 %316, %33
+  %322 = add i32 %316, %236
+  %323 = add i32 %314, %237
+  %324 = mul i32 %320, %312
+  %325 = mul i32 %321, %313
+  %326 = add i32 %325, %324
+  %327 = mul i32 %322, %313
+  %328 = add i32 %327, %324
+  %329 = mul i32 %323, %312
+  %330 = add i32 %325, %329
+  %331 = add i32 %327, %329
+  %332 = mul i32 %312, %314
+  %333 = sub i32 0, %332
+  %334 = sext i32 %333 to i64
+  %335 = getelementptr half, ptr addrspace(3) %319, i64 %334
+  %336 = mul i32 %313, %316
+  %337 = sub i32 0, %336
+  %338 = sext i32 %337 to i64
+  %339 = getelementptr half, ptr addrspace(3) %335, i64 %338
+  %340 = sext i32 %326 to i64
+  %341 = getelementptr half, ptr addrspace(3) %339, i64 %340
+  %342 = load <4 x half>, ptr addrspace(3) %341, align 8
+  %343 = sext i32 %328 to i64
+  %344 = getelementptr half, ptr addrspace(3) %339, i64 %343
+  %345 = load <4 x half>, ptr addrspace(3) %344, align 8
+  %346 = sext i32 %330 to i64
+  %347 = getelementptr half, ptr addrspace(3) %339, i64 %346
+  %348 = load <4 x half>, ptr addrspace(3) %347, align 8
+  %349 = sext i32 %331 to i64
+  %350 = getelementptr half, ptr addrspace(3) %339, i64 %349
+  %351 = load <4 x half>, ptr addrspace(3) %350, align 8
+  %352 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %307, 0
+  %353 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %307, 1
+  %354 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %307, 2
+  %355 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %307, 3
+  %356 = extractvalue { ptr addrspace(3), i32, i32, i32, i32 } %307, 4
+  %357 = add i32 %355, 16
+  %358 = shl i32 %353, 4
+  %359 = sext i32 %358 to i64
+  %360 = getelementptr half, ptr addrspace(3) %352, i64 %359
+  %361 = add i32 %356, %35
+  %362 = add i32 %357, %33
+  %363 = add i32 %357, %248
+  %364 = add i32 %357, %249
+  %365 = add i32 %357, %250
+  %366 = add i32 %357, %236
+  %367 = add i32 %357, %251
+  %368 = add i32 %357, %252
+  %369 = add i32 %357, %253
+  %370 = mul i32 %362, %353
+  %371 = mul i32 %361, %354
+  %372 = add i32 %370, %371
+  %373 = mul i32 %363, %353
+  %374 = add i32 %373, %371
+  %375 = mul i32 %364, %353
+  %376 = add i32 %375, %371
+  %377 = mul i32 %365, %353
+  %378 = add i32 %377, %371
+  %379 = mul i32 %366, %353
+  %380 = add i32 %379, %371
+  %381 = mul i32 %367, %353
+  %382 = add i32 %381, %371
+  %383 = mul i32 %368, %353
+  %384 = add i32 %383, %371
+  %385 = mul i32 %369, %353
+  %386 = add i32 %385, %371
+  %387 = mul i32 %353, %357
+  %388 = sub i32 0, %387
+  %389 = sext i32 %388 to i64
+  %390 = getelementptr half, ptr addrspace(3) %360, i64 %389
+  %391 = mul i32 %354, %356
+  %392 = sub i32 0, %391
+  %393 = sext i32 %392 to i64
+  %394 = getelementptr half, ptr addrspace(3) %390, i64 %393
+  %395 = sext i32 %372 to i64
+  %396 = getelementptr half, ptr addrspace(3) %394, i64 %395
+  %397 = load <1 x half>, ptr addrspace(3) %396, align 2
+  %398 = sext i32 %374 to i64
+  %399 = getelementptr half, ptr addrspace(3) %394, i64 %398
+  %400 = load <1 x half>, ptr addrspace(3) %399, align 2
+  %401 = shufflevector <1 x half> %397, <1 x half> %400, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
+  %402 = sext i32 %376 to i64
+  %403 = getelementptr half, ptr addrspace(3) %394, i64 %402
+  %404 = load <1 x half>, ptr addrspace(3) %403, align 2
+  %405 = shufflevector <1 x half> %404, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %406 = shufflevector <4 x half> %401, <4 x half> %405, <4 x i32> <i32 0, i32 1, i32 4, i32 poison>
+  %407 = sext i32 %378 to i64
+  %408 = getelementptr half, ptr addrspace(3) %394, i64 %407
+  %409 = load <1 x half>, ptr addrspace(3) %408, align 2
+  %410 = shufflevector <1 x half> %409, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %411 = shufflevector <4 x half> %406, <4 x half> %410, <4 x i32> <i32 0, i32 1, i32 2, i32 4>
+  %412 = sext i32 %380 to i64
+  %413 = getelementptr half, ptr addrspace(3) %394, i64 %412
+  %414 = load <1 x half>, ptr addrspace(3) %413, align 2
+  %415 = sext i32 %382 to i64
+  %416 = getelementptr half, ptr addrspace(3) %394, i64 %415
+  %417 = load <1 x half>, ptr addrspace(3) %416, align 2
+  %418 = shufflevector <1 x half> %414, <1 x half> %417, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
+  %419 = sext i32 %384 to i64
+  %420 = getelementptr half, ptr addrspace(3) %394, i64 %419
+  %421 = load <1 x half>, ptr addrspace(3) %420, align 2
+  %422 = shufflevector <1 x half> %421, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %423 = shufflevector <4 x half> %418, <4 x half> %422, <4 x i32> <i32 0, i32 1, i32 4, i32 poison>
+  %424 = sext i32 %386 to i64
+  %425 = getelementptr half, ptr addrspace(3) %394, i64 %424
+  %426 = load <1 x half>, ptr addrspace(3) %425, align 2
+  %427 = shufflevector <1 x half> %426, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %428 = shufflevector <4 x half> %423, <4 x half> %427, <4 x i32> <i32 0, i32 1, i32 2, i32 4>
+  %429 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 0
+  %430 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 1
+  %431 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 2
+  %432 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 3
+  %433 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 4
+  %434 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 5
+  %435 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 6
+  %436 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 7
+  %437 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 8
+  %438 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 9
+  %439 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 10
+  %440 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 11
+  %441 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 12
+  %442 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 13
+  %443 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 14
+  %444 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 15
+  %445 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 16
+  %446 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 17
+  %447 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 18
+  %448 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 19
+  %449 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 20
+  %450 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 21
+  %451 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 22
+  %452 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 23
+  %453 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 24
+  %454 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 25
+  %455 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 26
+  %456 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 27
+  %457 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 28
+  %458 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 29
+  %459 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 30
+  %460 = extractvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %309, 31
+  %461 = insertelement <16 x float> undef, float %429, i64 0
+  %462 = insertelement <16 x float> %461, float %430, i64 1
+  %463 = insertelement <16 x float> %462, float %431, i64 2
+  %464 = insertelement <16 x float> %463, float %432, i64 3
+  %465 = insertelement <16 x float> %464, float %433, i64 4
+  %466 = insertelement <16 x float> %465, float %434, i64 5
+  %467 = insertelement <16 x float> %466, float %435, i64 6
+  %468 = insertelement <16 x float> %467, float %436, i64 7
+  %469 = insertelement <16 x float> %468, float %437, i64 8
+  %470 = insertelement <16 x float> %469, float %438, i64 9
+  %471 = insertelement <16 x float> %470, float %439, i64 10
+  %472 = insertelement <16 x float> %471, float %440, i64 11
+  %473 = insertelement <16 x float> %472, float %441, i64 12
+  %474 = insertelement <16 x float> %473, float %442, i64 13
+  %475 = insertelement <16 x float> %474, float %443, i64 14
+  %476 = insertelement <16 x float> %475, float %444, i64 15
+  %477 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %.pn39, <4 x half> %.pn43167, <16 x float> %476, i32 0, i32 0, i32 0)
+  %478 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %.pn37, <4 x half> %.pn41168, <16 x float> %477, i32 0, i32 0, i32 0)
+  %479 = insertelement <16 x float> undef, float %445, i64 0
+  %480 = insertelement <16 x float> %479, float %446, i64 1
+  %481 = insertelement <16 x float> %480, float %447, i64 2
+  %482 = insertelement <16 x float> %481, float %448, i64 3
+  %483 = insertelement <16 x float> %482, float %449, i64 4
+  %484 = insertelement <16 x float> %483, float %450, i64 5
+  %485 = insertelement <16 x float> %484, float %451, i64 6
+  %486 = insertelement <16 x float> %485, float %452, i64 7
+  %487 = insertelement <16 x float> %486, float %453, i64 8
+  %488 = insertelement <16 x float> %487, float %454, i64 9
+  %489 = insertelement <16 x float> %488, float %455, i64 10
+  %490 = insertelement <16 x float> %489, float %456, i64 11
+  %491 = insertelement <16 x float> %490, float %457, i64 12
+  %492 = insertelement <16 x float> %491, float %458, i64 13
+  %493 = insertelement <16 x float> %492, float %459, i64 14
+  %494 = insertelement <16 x float> %493, float %460, i64 15
+  %495 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %.pn35, <4 x half> %.pn43167, <16 x float> %494, i32 0, i32 0, i32 0)
+  %496 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %.pn33, <4 x half> %.pn41168, <16 x float> %495, i32 0, i32 0, i32 0)
+  %497 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %342, <4 x half> %411, <16 x float> %478, i32 0, i32 0, i32 0)
+  %498 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %345, <4 x half> %428, <16 x float> %497, i32 0, i32 0, i32 0)
+  %499 = extractelement <16 x float> %498, i64 0
+  %500 = extractelement <16 x float> %498, i64 1
+  %501 = extractelement <16 x float> %498, i64 2
+  %502 = extractelement <16 x float> %498, i64 3
+  %503 = extractelement <16 x float> %498, i64 4
+  %504 = extractelement <16 x float> %498, i64 5
+  %505 = extractelement <16 x float> %498, i64 6
+  %506 = extractelement <16 x float> %498, i64 7
+  %507 = extractelement <16 x float> %498, i64 8
+  %508 = extractelement <16 x float> %498, i64 9
+  %509 = extractelement <16 x float> %498, i64 10
+  %510 = extractelement <16 x float> %498, i64 11
+  %511 = extractelement <16 x float> %498, i64 12
+  %512 = extractelement <16 x float> %498, i64 13
+  %513 = extractelement <16 x float> %498, i64 14
+  %514 = extractelement <16 x float> %498, i64 15
+  %515 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %348, <4 x half> %411, <16 x float> %496, i32 0, i32 0, i32 0)
+  %516 = tail call <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half> %351, <4 x half> %428, <16 x float> %515, i32 0, i32 0, i32 0)
+  %517 = extractelement <16 x float> %516, i64 0
+  %518 = extractelement <16 x float> %516, i64 1
+  %519 = extractelement <16 x float> %516, i64 2
+  %520 = extractelement <16 x float> %516, i64 3
+  %521 = extractelement <16 x float> %516, i64 4
+  %522 = extractelement <16 x float> %516, i64 5
+  %523 = extractelement <16 x float> %516, i64 6
+  %524 = extractelement <16 x float> %516, i64 7
+  %525 = extractelement <16 x float> %516, i64 8
+  %526 = extractelement <16 x float> %516, i64 9
+  %527 = extractelement <16 x float> %516, i64 10
+  %528 = extractelement <16 x float> %516, i64 11
+  %529 = extractelement <16 x float> %516, i64 12
+  %530 = extractelement <16 x float> %516, i64 13
+  %531 = extractelement <16 x float> %516, i64 14
+  %532 = extractelement <16 x float> %516, i64 15
+  %533 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } undef, float %499, 0
+  %534 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %533, float %500, 1
+  %535 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %534, float %501, 2
+  %536 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %535, float %502, 3
+  %537 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %536, float %503, 4
+  %538 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %537, float %504, 5
+  %539 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %538, float %505, 6
+  %540 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %539, float %506, 7
+  %541 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %540, float %507, 8
+  %542 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %541, float %508, 9
+  %543 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %542, float %509, 10
+  %544 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %543, float %510, 11
+  %545 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %544, float %511, 12
+  %546 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %545, float %512, 13
+  %547 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %546, float %513, 14
+  %548 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %547, float %514, 15
+  %549 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %548, float %517, 16
+  %550 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %549, float %518, 17
+  %551 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %550, float %519, 18
+  %552 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %551, float %520, 19
+  %553 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %552, float %521, 20
+  %554 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %553, float %522, 21
+  %555 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %554, float %523, 22
+  %556 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %555, float %524, 23
+  %557 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %556, float %525, 24
+  %558 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %557, float %526, 25
+  %559 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %558, float %527, 26
+  %560 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %559, float %528, 27
+  %561 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %560, float %529, 28
+  %562 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %561, float %530, 29
+  %563 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %562, float %531, 30
+  %564 = insertvalue { float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float } %563, float %532, 31
+  %565 = add nuw nsw i32 %305, 1
+  %566 = icmp ult i32 %305, 127
+  %.urem = urem i32 %306, 3
+  %.urem170 = urem i32 %305, 3
+  %567 = getelementptr half, ptr addrspace(1) %.pn15158, i64 32
+  %568 = getelementptr half, ptr addrspace(1) %.pn11159, i64 32
+  %569 = getelementptr half, ptr addrspace(1) %.pn7160, i64 32
+  %570 = getelementptr half, ptr addrspace(1) %.pn3161, i64 32
+  %571 = getelementptr half, ptr addrspace(1) %.pn31162, i64 %170
+  %572 = getelementptr half, ptr addrspace(1) %.pn27163, i64 %170
+  %573 = getelementptr half, ptr addrspace(1) %.pn23164, i64 %170
+  %574 = getelementptr half, ptr addrspace(1) %.pn19165, i64 %170
+  %575 = and i1 %97, %566
+  br i1 %575, label %576, label %585
+
+576:                                              ; preds = %304
+  %577 = addrspacecast ptr addrspace(1) %567 to ptr
+  %578 = load <2 x half>, ptr %577, align 4
+  %579 = addrspacecast ptr addrspace(1) %568 to ptr
+  %580 = load <2 x half>, ptr %579, align 4
+  %581 = addrspacecast ptr addrspace(1) %569 to ptr
+  %582 = load <2 x half>, ptr %581, align 4
+  %583 = addrspacecast ptr addrspace(1) %570 to ptr
+  %584 = load <2 x half>, ptr %583, align 4
+  br label %585
+
+585:                                              ; preds = %304, %576
+  %586 = phi <2 x half> [ %582, %576 ], [ zeroinitializer, %304 ]
+  %587 = phi <2 x half> [ %578, %576 ], [ zeroinitializer, %304 ]
+  %588 = phi <2 x half> [ %580, %576 ], [ zeroinitializer, %304 ]
+  %589 = phi <2 x half> [ %584, %576 ], [ zeroinitializer, %304 ]
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %590 = shl nuw nsw i32 %.urem, 12
+  %591 = zext i32 %590 to i64
+  %gep = getelementptr half, ptr addrspace(3) %117, i64 %591
+  %592 = getelementptr half, ptr addrspace(3) %gep, i64 1
+  %593 = getelementptr half, ptr addrspace(3) %gep, i64 2
+  %594 = getelementptr half, ptr addrspace(3) %gep, i64 3
+  %595 = getelementptr half, ptr addrspace(3) %gep, i64 4
+  %596 = getelementptr half, ptr addrspace(3) %gep, i64 5
+  %597 = getelementptr half, ptr addrspace(3) %gep, i64 6
+  %598 = getelementptr half, ptr addrspace(3) %gep, i64 7
+  %599 = shufflevector <2 x half> %587, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %599, ptr addrspace(3) %gep, align 2
+  %600 = shufflevector <2 x half> %587, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %600, ptr addrspace(3) %592, align 2
+  %601 = shufflevector <2 x half> %588, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %601, ptr addrspace(3) %593, align 2
+  %602 = shufflevector <2 x half> %588, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %602, ptr addrspace(3) %594, align 2
+  %603 = shufflevector <2 x half> %586, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %603, ptr addrspace(3) %595, align 2
+  %604 = shufflevector <2 x half> %586, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %604, ptr addrspace(3) %596, align 2
+  %605 = shufflevector <2 x half> %589, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %605, ptr addrspace(3) %597, align 2
+  %606 = shufflevector <2 x half> %589, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %606, ptr addrspace(3) %598, align 2
+  %607 = and i1 %98, %566
+  br i1 %607, label %608, label %617
+
+608:                                              ; preds = %585
+  %609 = addrspacecast ptr addrspace(1) %571 to ptr
+  %610 = load <2 x half>, ptr %609, align 4
+  %611 = addrspacecast ptr addrspace(1) %572 to ptr
+  %612 = load <2 x half>, ptr %611, align 4
+  %613 = addrspacecast ptr addrspace(1) %573 to ptr
+  %614 = load <2 x half>, ptr %613, align 4
+  %615 = addrspacecast ptr addrspace(1) %574 to ptr
+  %616 = load <2 x half>, ptr %615, align 4
+  br label %617
+
+617:                                              ; preds = %585, %608
+  %618 = phi <2 x half> [ %614, %608 ], [ zeroinitializer, %585 ]
+  %619 = phi <2 x half> [ %610, %608 ], [ zeroinitializer, %585 ]
+  %620 = phi <2 x half> [ %612, %608 ], [ zeroinitializer, %585 ]
+  %621 = phi <2 x half> [ %616, %608 ], [ zeroinitializer, %585 ]
+  %gep157 = getelementptr half, ptr addrspace(3) %150, i64 %591
+  %622 = getelementptr half, ptr addrspace(3) %gep157, i64 1
+  %623 = getelementptr half, ptr addrspace(3) %gep157, i64 2
+  %624 = getelementptr half, ptr addrspace(3) %gep157, i64 3
+  %625 = getelementptr half, ptr addrspace(3) %gep157, i64 4
+  %626 = getelementptr half, ptr addrspace(3) %gep157, i64 5
+  %627 = getelementptr half, ptr addrspace(3) %gep157, i64 6
+  %628 = getelementptr half, ptr addrspace(3) %gep157, i64 7
+  %629 = shufflevector <2 x half> %619, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %629, ptr addrspace(3) %gep157, align 2
+  %630 = shufflevector <2 x half> %619, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %630, ptr addrspace(3) %622, align 2
+  %631 = shufflevector <2 x half> %620, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %631, ptr addrspace(3) %623, align 2
+  %632 = shufflevector <2 x half> %620, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %632, ptr addrspace(3) %624, align 2
+  %633 = shufflevector <2 x half> %618, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %633, ptr addrspace(3) %625, align 2
+  %634 = shufflevector <2 x half> %618, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %634, ptr addrspace(3) %626, align 2
+  %635 = shufflevector <2 x half> %621, <2 x half> undef, <1 x i32> zeroinitializer
+  store <1 x half> %635, ptr addrspace(3) %627, align 2
+  %636 = shufflevector <2 x half> %621, <2 x half> undef, <1 x i32> <i32 1>
+  store <1 x half> %636, ptr addrspace(3) %628, align 2
+  %637 = shl nuw nsw i32 %.urem170, 12
+  %638 = zext i32 %637 to i64
+  %639 = getelementptr half, ptr addrspace(3) @global_smem, i64 %638
+  %640 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } undef, ptr addrspace(3) %639, 0
+  %641 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %640, i32 32, 1
+  %642 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %641, i32 1, 2
+  %643 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %642, i32 0, 3
+  %644 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %643, i32 0, 4
+  %645 = getelementptr half, ptr addrspace(3) getelementptr ([0 x i8], ptr addrspace(3) @global_smem, i64 0, i64 24576), i64 %638
+  %646 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } undef, ptr addrspace(3) %645, 0
+  %647 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %646, i32 128, 1
+  %648 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %647, i32 1, 2
+  %649 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %648, i32 0, 3
+  %650 = insertvalue { ptr addrspace(3), i32, i32, i32, i32 } %649, i32 0, 4
+  %651 = add nuw nsw i32 %306, 1
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %652 = getelementptr half, ptr addrspace(3) %645, i64 %270
+  %653 = load <1 x half>, ptr addrspace(3) %652, align 2
+  %654 = getelementptr half, ptr addrspace(3) %645, i64 %273
+  %655 = load <1 x half>, ptr addrspace(3) %654, align 2
+  %656 = shufflevector <1 x half> %653, <1 x half> %655, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
+  %657 = getelementptr half, ptr addrspace(3) %645, i64 %277
+  %658 = load <1 x half>, ptr addrspace(3) %657, align 2
+  %659 = shufflevector <1 x half> %658, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %660 = shufflevector <4 x half> %656, <4 x half> %659, <4 x i32> <i32 0, i32 1, i32 4, i32 poison>
+  %661 = getelementptr half, ptr addrspace(3) %645, i64 %282
+  %662 = load <1 x half>, ptr addrspace(3) %661, align 2
+  %663 = shufflevector <1 x half> %662, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %664 = shufflevector <4 x half> %660, <4 x half> %663, <4 x i32> <i32 0, i32 1, i32 2, i32 4>
+  %665 = getelementptr half, ptr addrspace(3) %645, i64 %287
+  %666 = load <1 x half>, ptr addrspace(3) %665, align 2
+  %667 = getelementptr half, ptr addrspace(3) %645, i64 %290
+  %668 = load <1 x half>, ptr addrspace(3) %667, align 2
+  %669 = shufflevector <1 x half> %666, <1 x half> %668, <4 x i32> <i32 0, i32 1, i32 poison, i32 poison>
+  %670 = getelementptr half, ptr addrspace(3) %645, i64 %294
+  %671 = load <1 x half>, ptr addrspace(3) %670, align 2
+  %672 = shufflevector <1 x half> %671, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %673 = shufflevector <4 x half> %669, <4 x half> %672, <4 x i32> <i32 0, i32 1, i32 4, i32 poison>
+  %674 = getelementptr half, ptr addrspace(3) %645, i64 %299
+  %675 = load <1 x half>, ptr addrspace(3) %674, align 2
+  %676 = shufflevector <1 x half> %675, <1 x half> poison, <4 x i32> <i32 0, i32 poison, i32 poison, i32 poison>
+  %677 = shufflevector <4 x half> %673, <4 x half> %676, <4 x i32> <i32 0, i32 1, i32 2, i32 4>
+  %678 = add nuw nsw i32 %310, 1
+  %679 = icmp ult i32 %310, 127
+  br i1 %679, label %304, label %680
+
+680:                                              ; preds = %617
+  %681 = mul i32 %43, %5
+  %682 = mul i32 %44, %5
+  %683 = mul i32 %45, %5
+  %684 = mul i32 %46, %5
+  %685 = mul i32 %47, %5
+  %686 = mul i32 %48, %5
+  %687 = mul i32 %49, %5
+  %688 = sext i32 %681 to i64
+  %689 = getelementptr float, ptr addrspace(1) %2, i64 %688
+  %690 = sext i32 %682 to i64
+  %691 = getelementptr float, ptr addrspace(1) %2, i64 %690
+  %692 = sext i32 %683 to i64
+  %693 = getelementptr float, ptr addrspace(1) %2, i64 %692
+  %694 = sext i32 %684 to i64
+  %695 = getelementptr float, ptr addrspace(1) %2, i64 %694
+  %696 = sext i32 %685 to i64
+  %697 = getelementptr float, ptr addrspace(1) %2, i64 %696
+  %698 = sext i32 %686 to i64
+  %699 = getelementptr float, ptr addrspace(1) %2, i64 %698
+  %700 = sext i32 %687 to i64
+  %701 = getelementptr float, ptr addrspace(1) %2, i64 %700
+  %702 = sext i32 %56 to i64
+  %703 = sext i32 %57 to i64
+  %704 = sext i32 %58 to i64
+  %705 = sext i32 %55 to i64
+  %706 = getelementptr float, ptr addrspace(1) %689, i64 %705
+  %707 = getelementptr float, ptr addrspace(1) %689, i64 %702
+  %708 = getelementptr float, ptr addrspace(1) %689, i64 %703
+  %709 = getelementptr float, ptr addrspace(1) %689, i64 %704
+  %710 = getelementptr float, ptr addrspace(1) %691, i64 %705
+  %711 = getelementptr float, ptr addrspace(1) %691, i64 %702
+  %712 = getelementptr float, ptr addrspace(1) %691, i64 %703
+  %713 = getelementptr float, ptr addrspace(1) %691, i64 %704
+  %714 = getelementptr float, ptr addrspace(1) %693, i64 %705
+  %715 = getelementptr float, ptr addrspace(1) %693, i64 %702
+  %716 = getelementptr float, ptr addrspace(1) %693, i64 %703
+  %717 = getelementptr float, ptr addrspace(1) %693, i64 %704
+  %718 = getelementptr float, ptr addrspace(1) %695, i64 %705
+  %719 = getelementptr float, ptr addrspace(1) %695, i64 %702
+  %720 = getelementptr float, ptr addrspace(1) %695, i64 %703
+  %721 = getelementptr float, ptr addrspace(1) %695, i64 %704
+  %722 = getelementptr float, ptr addrspace(1) %697, i64 %705
+  %723 = getelementptr float, ptr addrspace(1) %697, i64 %702
+  %724 = getelementptr float, ptr addrspace(1) %697, i64 %703
+  %725 = getelementptr float, ptr addrspace(1) %697, i64 %704
+  %726 = getelementptr float, ptr addrspace(1) %699, i64 %705
+  %727 = getelementptr float, ptr addrspace(1) %699, i64 %702
+  %728 = getelementptr float, ptr addrspace(1) %699, i64 %703
+  %729 = getelementptr float, ptr addrspace(1) %699, i64 %704
+  %730 = getelementptr float, ptr addrspace(1) %701, i64 %705
+  %731 = getelementptr float, ptr addrspace(1) %701, i64 %702
+  %732 = getelementptr float, ptr addrspace(1) %701, i64 %703
+  %733 = getelementptr float, ptr addrspace(1) %701, i64 %704
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %734 = mul nuw nsw i32 %34, 132
+  %735 = add nuw nsw i32 %734, %35
+  %736 = zext i32 %735 to i64
+  %737 = getelementptr float, ptr addrspace(3) @global_smem, i64 %736
+  %738 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> zeroinitializer
+  store <1 x float> %738, ptr addrspace(3) %737, align 4
+  %739 = add nuw nsw i32 %735, 132
+  %740 = zext i32 %739 to i64
+  %741 = getelementptr float, ptr addrspace(3) @global_smem, i64 %740
+  %742 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 1>
+  store <1 x float> %742, ptr addrspace(3) %741, align 4
+  %743 = add nuw nsw i32 %735, 264
+  %744 = zext i32 %743 to i64
+  %745 = getelementptr float, ptr addrspace(3) @global_smem, i64 %744
+  %746 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 2>
+  store <1 x float> %746, ptr addrspace(3) %745, align 4
+  %747 = add nuw nsw i32 %735, 396
+  %748 = zext i32 %747 to i64
+  %749 = getelementptr float, ptr addrspace(3) @global_smem, i64 %748
+  %750 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 3>
+  store <1 x float> %750, ptr addrspace(3) %749, align 4
+  %751 = add nuw nsw i32 %735, 1056
+  %752 = zext i32 %751 to i64
+  %753 = getelementptr float, ptr addrspace(3) @global_smem, i64 %752
+  %754 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 4>
+  store <1 x float> %754, ptr addrspace(3) %753, align 4
+  %755 = add nuw nsw i32 %735, 1188
+  %756 = zext i32 %755 to i64
+  %757 = getelementptr float, ptr addrspace(3) @global_smem, i64 %756
+  %758 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 5>
+  store <1 x float> %758, ptr addrspace(3) %757, align 4
+  %759 = add nuw nsw i32 %735, 1320
+  %760 = zext i32 %759 to i64
+  %761 = getelementptr float, ptr addrspace(3) @global_smem, i64 %760
+  %762 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 6>
+  store <1 x float> %762, ptr addrspace(3) %761, align 4
+  %763 = add nuw nsw i32 %735, 1452
+  %764 = zext i32 %763 to i64
+  %765 = getelementptr float, ptr addrspace(3) @global_smem, i64 %764
+  %766 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 7>
+  store <1 x float> %766, ptr addrspace(3) %765, align 4
+  %767 = add nuw nsw i32 %735, 2112
+  %768 = zext i32 %767 to i64
+  %769 = getelementptr float, ptr addrspace(3) @global_smem, i64 %768
+  %770 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 8>
+  store <1 x float> %770, ptr addrspace(3) %769, align 4
+  %771 = add nuw nsw i32 %735, 2244
+  %772 = zext i32 %771 to i64
+  %773 = getelementptr float, ptr addrspace(3) @global_smem, i64 %772
+  %774 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 9>
+  store <1 x float> %774, ptr addrspace(3) %773, align 4
+  %775 = add nuw nsw i32 %735, 2376
+  %776 = zext i32 %775 to i64
+  %777 = getelementptr float, ptr addrspace(3) @global_smem, i64 %776
+  %778 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 10>
+  store <1 x float> %778, ptr addrspace(3) %777, align 4
+  %779 = add nuw nsw i32 %735, 2508
+  %780 = zext i32 %779 to i64
+  %781 = getelementptr float, ptr addrspace(3) @global_smem, i64 %780
+  %782 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 11>
+  store <1 x float> %782, ptr addrspace(3) %781, align 4
+  %783 = add nuw nsw i32 %735, 3168
+  %784 = zext i32 %783 to i64
+  %785 = getelementptr float, ptr addrspace(3) @global_smem, i64 %784
+  %786 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 12>
+  store <1 x float> %786, ptr addrspace(3) %785, align 4
+  %787 = add nuw nsw i32 %735, 3300
+  %788 = zext i32 %787 to i64
+  %789 = getelementptr float, ptr addrspace(3) @global_smem, i64 %788
+  %790 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 13>
+  store <1 x float> %790, ptr addrspace(3) %789, align 4
+  %791 = add nuw nsw i32 %735, 3432
+  %792 = zext i32 %791 to i64
+  %793 = getelementptr float, ptr addrspace(3) @global_smem, i64 %792
+  %794 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 14>
+  store <1 x float> %794, ptr addrspace(3) %793, align 4
+  %795 = add nuw nsw i32 %735, 3564
+  %796 = zext i32 %795 to i64
+  %797 = getelementptr float, ptr addrspace(3) @global_smem, i64 %796
+  %798 = shufflevector <16 x float> %498, <16 x float> undef, <1 x i32> <i32 15>
+  store <1 x float> %798, ptr addrspace(3) %797, align 4
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %799 = mul nuw nsw i32 %19, 132
+  %800 = add nuw nsw i32 %799, %24
+  %801 = zext i32 %800 to i64
+  %802 = getelementptr float, ptr addrspace(3) @global_smem, i64 %801
+  %803 = load <4 x i32>, ptr addrspace(3) %802, align 16
+  %804 = mul nuw nsw i32 %20, 132
+  %805 = add nuw nsw i32 %804, %24
+  %806 = zext i32 %805 to i64
+  %807 = getelementptr float, ptr addrspace(3) @global_smem, i64 %806
+  %808 = load <4 x i32>, ptr addrspace(3) %807, align 16
+  %809 = mul nuw nsw i32 %21, 132
+  %810 = add nuw nsw i32 %809, %24
+  %811 = zext i32 %810 to i64
+  %812 = getelementptr float, ptr addrspace(3) @global_smem, i64 %811
+  %813 = load <4 x i32>, ptr addrspace(3) %812, align 16
+  %814 = mul nuw nsw i32 %22, 132
+  %815 = add nuw nsw i32 %814, %24
+  %816 = zext i32 %815 to i64
+  %817 = getelementptr float, ptr addrspace(3) @global_smem, i64 %816
+  %818 = load <4 x i32>, ptr addrspace(3) %817, align 16
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %819 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> zeroinitializer
+  store <1 x float> %819, ptr addrspace(3) %737, align 4
+  %820 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 1>
+  store <1 x float> %820, ptr addrspace(3) %741, align 4
+  %821 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 2>
+  store <1 x float> %821, ptr addrspace(3) %745, align 4
+  %822 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 3>
+  store <1 x float> %822, ptr addrspace(3) %749, align 4
+  %823 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 4>
+  store <1 x float> %823, ptr addrspace(3) %753, align 4
+  %824 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 5>
+  store <1 x float> %824, ptr addrspace(3) %757, align 4
+  %825 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 6>
+  store <1 x float> %825, ptr addrspace(3) %761, align 4
+  %826 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 7>
+  store <1 x float> %826, ptr addrspace(3) %765, align 4
+  %827 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 8>
+  store <1 x float> %827, ptr addrspace(3) %769, align 4
+  %828 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 9>
+  store <1 x float> %828, ptr addrspace(3) %773, align 4
+  %829 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 10>
+  store <1 x float> %829, ptr addrspace(3) %777, align 4
+  %830 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 11>
+  store <1 x float> %830, ptr addrspace(3) %781, align 4
+  %831 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 12>
+  store <1 x float> %831, ptr addrspace(3) %785, align 4
+  %832 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 13>
+  store <1 x float> %832, ptr addrspace(3) %789, align 4
+  %833 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 14>
+  store <1 x float> %833, ptr addrspace(3) %793, align 4
+  %834 = shufflevector <16 x float> %516, <16 x float> undef, <1 x i32> <i32 15>
+  store <1 x float> %834, ptr addrspace(3) %797, align 4
+  fence syncscope("workgroup") release
+  tail call void @llvm.amdgcn.s.barrier()
+  fence syncscope("workgroup") acquire
+  %835 = load <4 x i32>, ptr addrspace(3) %802, align 16
+  %836 = load <4 x i32>, ptr addrspace(3) %807, align 16
+  %837 = load <4 x i32>, ptr addrspace(3) %812, align 16
+  %838 = load <4 x i32>, ptr addrspace(3) %817, align 16
+  br i1 %88, label %.critedge, label %.critedge107
+
+.critedge:                                        ; preds = %680
+  %839 = mul i32 %42, %5
+  %840 = sext i32 %839 to i64
+  %841 = getelementptr float, ptr addrspace(1) %2, i64 %840
+  %842 = getelementptr float, ptr addrspace(1) %841, i64 %704
+  %843 = getelementptr float, ptr addrspace(1) %841, i64 %703
+  %844 = getelementptr float, ptr addrspace(1) %841, i64 %702
+  %.extract = extractelement <4 x i32> %803, i64 0
+  %845 = getelementptr float, ptr addrspace(1) %841, i64 %705
+  store i32 %.extract, ptr addrspace(1) %845, align 4
+  %.extract45 = extractelement <4 x i32> %803, i64 1
+  store i32 %.extract45, ptr addrspace(1) %844, align 4
+  %.extract47 = extractelement <4 x i32> %803, i64 2
+  store i32 %.extract47, ptr addrspace(1) %843, align 4
+  %.extract49 = extractelement <4 x i32> %803, i64 3
+  store i32 %.extract49, ptr addrspace(1) %842, align 4
+  br label %.critedge107
+
+.critedge107:                                     ; preds = %680, %.critedge
+  br i1 %89, label %.critedge109, label %.critedge111
+
+.critedge109:                                     ; preds = %.critedge107
+  %.extract51 = extractelement <4 x i32> %808, i64 0
+  store i32 %.extract51, ptr addrspace(1) %706, align 4
+  %.extract53 = extractelement <4 x i32> %808, i64 1
+  store i32 %.extract53, ptr addrspace(1) %707, align 4
+  %.extract55 = extractelement <4 x i32> %808, i64 2
+  store i32 %.extract55, ptr addrspace(1) %708, align 4
+  %.extract57 = extractelement <4 x i32> %808, i64 3
+  store i32 %.extract57, ptr addrspace(1) %709, align 4
+  br label %.critedge111
+
+.critedge111:                                     ; preds = %.critedge107, %.critedge109
+  br i1 %90, label %.critedge113, label %.critedge115
+
+.critedge113:                                     ; preds = %.critedge111
+  %.extract59 = extractelement <4 x i32> %813, i64 0
+  store i32 %.extract59, ptr addrspace(1) %710, align 4
+  %.extract61 = extractelement <4 x i32> %813, i64 1
+  store i32 %.extract61, ptr addrspace(1) %711, align 4
+  %.extract63 = extractelement <4 x i32> %813, i64 2
+  store i32 %.extract63, ptr addrspace(1) %712, align 4
+  %.extract65 = extractelement <4 x i32> %813, i64 3
+  store i32 %.extract65, ptr addrspace(1) %713, align 4
+  br label %.critedge115
+
+.critedge115:                                     ; preds = %.critedge111, %.critedge113
+  br i1 %91, label %.critedge117, label %.critedge119
+
+.critedge117:                                     ; preds = %.critedge115
+  %.extract67 = extractelement <4 x i32> %818, i64 0
+  store i32 %.extract67, ptr addrspace(1) %714, align 4
+  %.extract69 = extractelement <4 x i32> %818, i64 1
+  store i32 %.extract69, ptr addrspace(1) %715, align 4
+  %.extract71 = extractelement <4 x i32> %818, i64 2
+  store i32 %.extract71, ptr addrspace(1) %716, align 4
+  %.extract73 = extractelement <4 x i32> %818, i64 3
+  store i32 %.extract73, ptr addrspace(1) %717, align 4
+  br label %.critedge119
+
+.critedge119:                                     ; preds = %.critedge115, %.critedge117
+  br i1 %92, label %.critedge121, label %.critedge123
+
+.critedge121:                                     ; preds = %.critedge119
+  %.extract75 = extractelement <4 x i32> %835, i64 0
+  store i32 %.extract75, ptr addrspace(1) %718, align 4
+  %.extract77 = extractelement <4 x i32> %835, i64 1
+  store i32 %.extract77, ptr addrspace(1) %719, align 4
+  %.extract79 = extractelement <4 x i32> %835, i64 2
+  store i32 %.extract79, ptr addrspace(1) %720, align 4
+  %.extract81 = extractelement <4 x i32> %835, i64 3
+  store i32 %.extract81, ptr addrspace(1) %721, align 4
+  br label %.critedge123
+
+.critedge123:                                     ; preds = %.critedge119, %.critedge121
+  br i1 %93, label %.critedge125, label %.critedge127
+
+.critedge125:                                     ; preds = %.critedge123
+  %.extract83 = extractelement <4 x i32> %836, i64 0
+  store i32 %.extract83, ptr addrspace(1) %722, align 4
+  %.extract85 = extractelement <4 x i32> %836, i64 1
+  store i32 %.extract85, ptr addrspace(1) %723, align 4
+  %.extract87 = extractelement <4 x i32> %836, i64 2
+  store i32 %.extract87, ptr addrspace(1) %724, align 4
+  %.extract89 = extractelement <4 x i32> %836, i64 3
+  store i32 %.extract89, ptr addrspace(1) %725, align 4
+  br label %.critedge127
+
+.critedge127:                                     ; preds = %.critedge123, %.critedge125
+  br i1 %94, label %.critedge129, label %.critedge131
+
+.critedge129:                                     ; preds = %.critedge127
+  %.extract91 = extractelement <4 x i32> %837, i64 0
+  store i32 %.extract91, ptr addrspace(1) %726, align 4
+  %.extract93 = extractelement <4 x i32> %837, i64 1
+  store i32 %.extract93, ptr addrspace(1) %727, align 4
+  %.extract95 = extractelement <4 x i32> %837, i64 2
+  store i32 %.extract95, ptr addrspace(1) %728, align 4
+  %.extract97 = extractelement <4 x i32> %837, i64 3
+  store i32 %.extract97, ptr addrspace(1) %729, align 4
+  br label %.critedge131
+
+.critedge131:                                     ; preds = %.critedge127, %.critedge129
+  br i1 %95, label %.critedge133, label %.critedge135
+
+.critedge133:                                     ; preds = %.critedge131
+  %.extract99 = extractelement <4 x i32> %838, i64 0
+  store i32 %.extract99, ptr addrspace(1) %730, align 4
+  %.extract101 = extractelement <4 x i32> %838, i64 1
+  store i32 %.extract101, ptr addrspace(1) %731, align 4
+  %.extract103 = extractelement <4 x i32> %838, i64 2
+  store i32 %.extract103, ptr addrspace(1) %732, align 4
+  %.extract105 = extractelement <4 x i32> %838, i64 3
+  store i32 %.extract105, ptr addrspace(1) %733, align 4
+  br label %.critedge135
+
+.critedge135:                                     ; preds = %.critedge131, %.critedge133
+  ret void
+}
+
+; Function Attrs: mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none)
+declare i32 @llvm.amdgcn.workitem.id.x() #1
+
+; Function Attrs: mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none)
+declare i32 @llvm.amdgcn.workgroup.id.x() #1
+
+; Function Attrs: mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none)
+declare i32 @llvm.amdgcn.workgroup.id.y() #1
+
+; Function Attrs: convergent mustprogress nocallback nofree nounwind willreturn
+declare void @llvm.amdgcn.s.barrier() #2
+
+; Function Attrs: convergent mustprogress nocallback nofree nosync nounwind willreturn memory(none)
+declare <16 x float> @llvm.amdgcn.mfma.f32.32x32x8f16(<4 x half>, <4 x half>, <16 x float>, i32 immarg, i32 immarg, i32 immarg) #3
+
+attributes #0 = { nofree nounwind "amdgpu-flat-work-group-size"="1, 512" "amdgpu-unsafe-fp-atomics"="true" "denormal-fp-math-f32"="preserve-sign" }
+attributes #1 = { mustprogress nocallback nofree nosync nounwind speculatable willreturn memory(none) }
+attributes #2 = { convergent mustprogress nocallback nofree nounwind willreturn }
+attributes #3 = { convergent mustprogress nocallback nofree nosync nounwind willreturn memory(none) }
+
+!nvvm.annotations = !{!0}
+!opencl.ocl.version = !{!1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1, !1}
+!llvm.ident = !{!2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2, !2}
+!llvm.module.flags = !{!3, !4}
+
+!0 = !{ptr @matmul_kernel_0d1d2d3d4c5d6c7d8c, !"kernel", i32 1}
+!1 = !{i32 2, i32 0}
+!2 = !{!"AMD clang version 14.0.0 (https://github.com/RadeonOpenCompute/llvm-project roc-5.2.0 22204 50d6d5d5b608d2abd6af44314abc6ad20036af3b)"}
+!3 = !{i32 1, !"wchar_size", i32 4}
+!4 = !{i32 8, !"PIC Level", i32 1}

@@ -7,8 +7,7 @@ using namespace mlir;
 using namespace mlir::triton;
 
 void populateDotOpToLLVMPatterns(TritonGPUToLLVMTypeConverter &typeConverter,
-                                 RewritePatternSet &patterns, int numWarps,
-                                 ModuleAxisInfoAnalysis &axisInfoAnalysis,
+                                 RewritePatternSet &patterns,
                                  ModuleAllocation &allocation,
                                  PatternBenefit benefit);
 

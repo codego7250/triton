@@ -9,6 +9,7 @@ using namespace mlir::triton;
 using ::mlir::triton::gpu::BlockedEncodingAttr;
 using ::mlir::triton::gpu::DotOperandEncodingAttr;
 using ::mlir::triton::gpu::getTotalElemsPerThread;
+using ::mlir::triton::gpu::MfmaEncodingAttr;
 using ::mlir::triton::gpu::MmaEncodingAttr;
 using ::mlir::triton::gpu::SharedEncodingAttr;
 using ::mlir::triton::gpu::SliceEncodingAttr;
@@ -27,9 +28,6 @@ TritonGPUToLLVMTypeConverter::TritonGPUToLLVMTypeConverter(
   addConversion([&](mlir::Float8E4M3B11FNUZType type) -> std::optional<Type> {
     return IntegerType::get(type.getContext(), 8);
   });
-  addConversion([&](mlir::Float8E4M3FNType type) -> std::optional<Type> {
-    return IntegerType::get(type.getContext(), 8);
-  });
   addConversion([&](mlir::Float8E4M3FNUZType type) -> std::optional<Type> {
     return IntegerType::get(type.getContext(), 8);
   });
@@ -44,27 +42,7 @@ TritonGPUToLLVMTypeConverter::TritonGPUToLLVMTypeConverter(
 
 Type TritonGPUToLLVMTypeConverter::convertTritonPointerType(
     triton::PointerType type) {
-  auto ctx = type.getContext();
-  auto pointeeType = type.getPointeeType();
-  if (pointeeType.isa<RankedTensorType>()) {
-    auto rankedTensorType = pointeeType.cast<RankedTensorType>();
-    // struct { offset0, offset1, shape0, shape1, stride0,
-    // stride1, base_ptr};
-    auto eleType = rankedTensorType.getElementType();
-    auto shape = rankedTensorType.getShape();
-    SmallVector<Type, 4> types;
-    // offsets
-    for (size_t i = 0; i < shape.size(); ++i)
-      types.push_back(IntegerType::get(ctx, 32));
-    // shapes, strides
-    for (size_t i = 0; i < 2 * shape.size(); ++i)
-      types.push_back(IntegerType::get(ctx, 64));
-
-    types.push_back(
-        LLVM::LLVMPointerType::get(eleType, type.getAddressSpace()));
-
-    return LLVM::LLVMStructType::getLiteral(ctx, types);
-  }
+  // Recursively translate pointee type
   return LLVM::LLVMPointerType::get(convertType(type.getPointeeType()),
                                     type.getAddressSpace());
 }
@@ -127,12 +105,31 @@ Type TritonGPUToLLVMTypeConverter::getElementTypeForStruct(
   auto dotOpLayout = layout.dyn_cast<DotOperandEncodingAttr>();
   if (!dotOpLayout)
     return elemTy;
+
+#ifdef USE_ROCM
+  if (auto mfmaParent = dotOpLayout.getParent().dyn_cast<MfmaEncodingAttr>()) {
+    if (elemTy.isF32())
+      return elemTy;
+    if (elemTy.isInteger(16)) // aka BF16
+      return vec_ty(elemTy, dotOpLayout.getKWidth() / 2);
+    if (elemTy.isF16())
+      return vec_ty(elemTy, 4);
+    if (elemTy.isInteger(8))
+      return IntegerType::get(ctx, 32);
+  }
+#endif
+
   auto mmaParent = dotOpLayout.getParent().dyn_cast<MmaEncodingAttr>();
   if (!mmaParent)
     return elemTy;
-  int bitwidth = elemTy.getIntOrFloatBitWidth();
-  assert(bitwidth <= 32);
-  return IntegerType::get(ctx, 32);
+  if (mmaParent.isAmpere()) {
+    int bitwidth = elemTy.getIntOrFloatBitWidth();
+    assert(bitwidth <= 32);
+    return IntegerType::get(ctx, 32);
+  } else {
+    assert(mmaParent.isVolta());
+    return vec_ty(elemTy, 2);
+  }
 }
 
 Type TritonGPUToLLVMTypeConverter::convertTritonTensorType(

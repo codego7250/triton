@@ -70,8 +70,7 @@ def test_nested1_change():
 def reset_tmp_dir():
     os.environ["TRITON_CACHE_DIR"] = tmpdir
     if os.path.exists(tmpdir):
-        # https://stackoverflow.com/questions/303200/how-do-i-remove-delete-a-folder-that-is-not-empty
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        shutil.rmtree(tmpdir)
 
 
 def test_reuse():
@@ -99,25 +98,10 @@ def test_specialize(mode):
     reset_tmp_dir()
     x = torch.empty(1, dtype=torch.int32, device='cuda')
     function = {'enable': kernel, 'disable': kernel_nospec}[mode]
-    target = {'enable': 4, 'disable': 1}[mode]
+    target = {'enable': 3, 'disable': 1}[mode]
     for i in [1, 2, 4, 8, 16, 32]:
         function[(1,)](x, i, BLOCK=512)
     assert counter == target
-
-
-def test_annotation():
-    @triton.jit
-    def kernel(X, i: tl.int32):
-        tl.store(X, i)
-
-    x = torch.empty(1, dtype=torch.int32, device='cuda')
-
-    device = torch.cuda.current_device()
-    kernel[(1,)](x, 1)
-    kernel[(1,)](x, 8)
-    kernel[(1,)](x, 16)
-    kernel[(1,)](x, 17)
-    assert len(kernel.cache[device]) == 4
 
 
 def test_constexpr_not_callable() -> None:
@@ -153,14 +137,13 @@ def test_jit_warmup_cache() -> None:
         torch.randn(32, dtype=torch.float32, device="cuda"),
         32,
     ]
-    device = torch.cuda.current_device()
-    assert len(kernel_add.cache[device]) == 0
+    assert len(kernel_add.cache) == 0
     kernel_add.warmup(torch.float32, torch.float32, torch.float32, 32, grid=(1,))
-    assert len(kernel_add.cache[device]) == 1
+    assert len(kernel_add.cache) == 1
     kernel_add.warmup(*args, grid=(1,))
-    assert len(kernel_add.cache[device]) == 1
+    assert len(kernel_add.cache) == 1
     kernel_add.warmup(*args, grid=(1,))
-    assert len(kernel_add.cache[device]) == 1
+    assert len(kernel_add.cache) == 1
 
 
 def test_jit_debug() -> None:

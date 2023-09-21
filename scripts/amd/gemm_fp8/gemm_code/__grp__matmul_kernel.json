@@ -1,0 +1,1 @@
+{"child_paths": ["matmul_kernel.amdgcn", "matmul_kernel.hsaco_path", "matmul_kernel.json", "matmul_kernel.llir", "matmul_kernel.ttgir", "matmul_kernel.ttir"]}

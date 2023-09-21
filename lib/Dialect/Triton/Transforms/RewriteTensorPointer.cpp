@@ -11,8 +11,6 @@ using namespace mlir;
 #define GEN_PASS_CLASSES
 #include "triton/Dialect/Triton/Transforms/Passes.h.inc"
 
-namespace {
-
 /// An additional struct to record the meta information of operations
 /// with tensor pointers
 struct RewritedInfo {
@@ -188,17 +186,16 @@ public:
   }
 };
 
-} // namespace
-
 class RewriteTensorPointerPass
     : public TritonRewriteTensorPointerBase<RewriteTensorPointerPass> {
 private:
   int computeCapability;
+  bool isROCM;
   DenseMap<Value, RewritedInfo> rewritedInfo;
 
 public:
-  explicit RewriteTensorPointerPass(int computeCapability)
-      : computeCapability(computeCapability) {}
+  explicit RewriteTensorPointerPass(int computeCapability, bool isROCM)
+      : computeCapability(computeCapability), isROCM(isROCM) {}
 
   static bool needRewrite(Operation *op) {
     return std::any_of(op->getOperands().begin(), op->getOperands().end(),
@@ -325,9 +322,9 @@ public:
   Operation *rewriteForOp(OpBuilder &builder, scf::ForOp op,
                           std::stack<Operation *> &eraser) {
     // Generate new iteration operands and set rewrited information
-    SmallVector<Value> oldIterOperands = llvm::to_vector(op.getInitArgs());
-    SmallVector<Value> newIterOperands = llvm::to_vector(op.getInitArgs());
-    for (unsigned i = 0, oldI = 0, size = op.getInitArgs().size(); i < size;
+    SmallVector<Value> oldIterOperands = op.getIterOperands();
+    SmallVector<Value> newIterOperands = op.getIterOperands();
+    for (unsigned i = 0, oldI = 0, size = op.getNumIterOperands(); i < size;
          ++i, ++oldI) {
       if (!triton::isTensorPointerType(newIterOperands[i].getType()))
         continue;
@@ -350,7 +347,7 @@ public:
     // mapping. It may refer to a value in the old loop, but we will rewrite it
     // later
     IRMapping mapping;
-    for (unsigned i = 0, oldI = 0, sz = op.getInitArgs().size(); oldI < sz;
+    for (unsigned i = 0, oldI = 0; oldI < op.getNumIterOperands();
          ++i, ++oldI) {
       auto oldRegionIterArg = op.getRegionIterArg(oldI);
       if (triton::isTensorPointerType(oldRegionIterArg.getType())) {
@@ -377,7 +374,7 @@ public:
     }
 
     // Replace later usages
-    assert(op.getNumResults() == op.getInitArgs().size());
+    assert(op.getNumResults() == op.getNumIterOperands());
     for (unsigned i = 0, oldI = 0; oldI < op.getNumResults(); ++i, ++oldI) {
       auto oldResult = op.getResult(oldI);
       if (triton::isTensorPointerType(oldResult.getType())) {
@@ -474,7 +471,7 @@ public:
 
   void runOnOperation() override {
     // Only rewrite if the hardware does not support
-    if (computeCapability >= 90)
+    if (!isROCM && computeCapability >= 90)
       return;
 
     // NOTES(Chenggang): we don't use `ConversionPatternRewriter`, because
@@ -503,6 +500,6 @@ public:
 };
 
 std::unique_ptr<Pass>
-triton::createRewriteTensorPointerPass(int computeCapability) {
-  return std::make_unique<RewriteTensorPointerPass>(computeCapability);
+triton::createRewriteTensorPointerPass(int computeCapability, bool isROCM) {
+  return std::make_unique<RewriteTensorPointerPass>(computeCapability, isROCM);
 }

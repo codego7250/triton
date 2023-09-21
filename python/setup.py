@@ -8,7 +8,6 @@ import sysconfig
 import tarfile
 import tempfile
 import urllib.request
-from distutils.command.clean import clean
 from pathlib import Path
 from typing import NamedTuple
 
@@ -59,8 +58,8 @@ class Package(NamedTuple):
 
 
 def get_pybind11_package_info():
-    name = "pybind11-2.11.1"
-    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz"
+    name = "pybind11-2.10.0"
+    url = "https://github.com/pybind/pybind11/archive/refs/tags/v2.10.0.tar.gz"
     return Package("pybind11", name, url, "PYBIND11_INCLUDE_DIR", "", "PYBIND11_SYSPATH")
 
 # llvm
@@ -69,12 +68,12 @@ def get_pybind11_package_info():
 def get_llvm_package_info():
     # added statement for Apple Silicon
     system = platform.system()
-    arch = platform.machine()
-    if arch == 'aarch64':
-        arch = 'arm64'
+    arch = 'x86_64'
     if system == "Darwin":
         system_suffix = "apple-darwin"
-        arch = platform.machine()
+        cpu_type = os.popen('sysctl machdep.cpu.brand_string').read()
+        if "apple" in cpu_type.lower():
+            arch = 'arm64'
     elif system == "Linux":
         vglibc = tuple(map(int, platform.libc_ver()[1].split('.')))
         vglibc = vglibc[0] * 100 + vglibc[1]
@@ -87,9 +86,6 @@ def get_llvm_package_info():
     name = f'llvm+mlir-17.0.0-{arch}-{system_suffix}-{release_suffix}'
     version = "llvm-17.0.0-c5dede880d17"
     url = f"https://github.com/ptillet/triton-llvm-releases/releases/download/{version}/{name}.tar.xz"
-    # FIXME: remove the following once github.com/ptillet/triton-llvm-releases has arm64 llvm releases
-    if arch == 'arm64' and 'linux' in system_suffix:
-        url = f"https://github.com/acollins3/triton-llvm-releases/releases/download/{version}/{name}.tar.xz"
     return Package("llvm", name, url, "LLVM_INCLUDE_DIRS", "LLVM_LIBRARY_DIR", "LLVM_SYSPATH")
 
 
@@ -125,12 +121,12 @@ def get_thirdparty_packages(triton_cache_path):
 # ---- package data ---
 
 
-def download_and_copy(src_path, version, url_func):
+def download_and_copy_ptxas():
+
     base_dir = os.path.dirname(__file__)
-    arch = platform.machine()
-    if arch == "x86_64":
-        arch = "64"
-    url = url_func(arch, version)
+    src_path = "bin/ptxas"
+    version = "12.1.105"
+    url = f"https://conda.anaconda.org/nvidia/label/cuda-12.1.1/linux-64/cuda-nvcc-{version}-0.tar.bz2"
     dst_prefix = os.path.join(base_dir, "triton")
     dst_suffix = os.path.join("third_party", "cuda", src_path)
     dst_path = os.path.join(dst_prefix, dst_suffix)
@@ -153,27 +149,8 @@ def download_and_copy(src_path, version, url_func):
             shutil.copy(src_path, dst_path)
     return dst_suffix
 
+
 # ---- cmake extension ----
-
-
-def get_base_dir():
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
-
-def get_cmake_dir():
-    plat_name = sysconfig.get_platform()
-    python_version = sysconfig.get_python_version()
-    dir_name = f"cmake.{plat_name}-{sys.implementation.name}-{python_version}"
-    cmake_dir = Path(get_base_dir()) / "python" / "build" / dir_name
-    cmake_dir.mkdir(parents=True, exist_ok=True)
-    return cmake_dir
-
-
-class CMakeClean(clean):
-    def initialize_options(self):
-        clean.initialize_options(self)
-        self.build_temp = get_cmake_dir()
-
 
 class CMakeBuildPy(build_py):
     def run(self) -> None:
@@ -190,12 +167,11 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
 
-    user_options = build_ext.user_options + \
-        [('base-dir=', None, 'base directory of Triton')]
+    user_options = build_ext.user_options + [('base-dir=', None, 'base directory of Triton')]
 
     def initialize_options(self):
         build_ext.initialize_options(self)
-        self.base_dir = get_base_dir()
+        self.base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
     def finalize_options(self):
         build_ext.finalize_options(self)
@@ -204,7 +180,9 @@ class CMakeBuild(build_ext):
         try:
             out = subprocess.check_output(["cmake", "--version"])
         except OSError:
-            raise RuntimeError("CMake must be installed to build the following extensions: " + ", ".join(e.name for e in self.extensions))
+            raise RuntimeError(
+                "CMake must be installed to build the following extensions: " + ", ".join(e.name for e in self.extensions)
+            )
 
         match = re.search(r"version\s*(?P<major>\d+)\.(?P<minor>\d+)([\d.]+)?", out.decode())
         cmake_major, cmake_minor = int(match.group("major")), int(match.group("minor"))
@@ -214,9 +192,16 @@ class CMakeBuild(build_ext):
         for ext in self.extensions:
             self.build_extension(ext)
 
+    def get_cmake_dir(self):
+        plat_name = sysconfig.get_platform()
+        python_version = sysconfig.get_python_version()
+        dir_name = f"cmake.{plat_name}-{sys.implementation.name}-{python_version}"
+        cmake_dir = Path(self.base_dir) / "python" / "build" / dir_name
+        cmake_dir.mkdir(parents=True, exist_ok=True)
+        return cmake_dir
+
     def build_extension(self, ext):
         lit_dir = shutil.which('lit')
-        ninja_dir = shutil.which('ninja')
         user_home = os.getenv("HOME") or os.getenv("USERPROFILE") or \
             os.getenv("HOMEPATH") or None
         if not user_home:
@@ -231,8 +216,6 @@ class CMakeBuild(build_ext):
         # python directories
         python_include_dir = sysconfig.get_path("platinclude")
         cmake_args = [
-            "-G", "Ninja",  # Ninja is much faster than make
-            "-DCMAKE_MAKE_PROGRAM=" + ninja_dir,  # Pass explicit path to ninja otherwise cmake may cache a temporary path
             "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
             "-DLLVM_ENABLE_WERROR=ON",
             "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=" + extdir,
@@ -274,15 +257,13 @@ class CMakeBuild(build_ext):
                            "-DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=lld"]
 
         env = os.environ.copy()
-        cmake_dir = get_cmake_dir()
+        cmake_dir = self.get_cmake_dir()
         subprocess.check_call(["cmake", self.base_dir] + cmake_args, cwd=cmake_dir, env=env)
         subprocess.check_call(["cmake", "--build", "."] + build_args, cwd=cmake_dir)
-        subprocess.check_call(["cmake", "--build", ".", "--target", "mlir-doc"], cwd=cmake_dir)
 
 
-download_and_copy(src_path='bin/ptxas', version='12.1.105', url_func=lambda arch, version: f"https://conda.anaconda.org/nvidia/label/cuda-12.1.1/linux-{arch}/cuda-nvcc-{version}-0.tar.bz2")
-download_and_copy(src_path='bin/cuobjdump', version='12.1.111', url_func=lambda arch, version: f"https://conda.anaconda.org/nvidia/label/cuda-12.1.1/linux-{arch}/cuda-cuobjdump-{version}-0.tar.bz2")
-download_and_copy(src_path='bin/nvdisasm', version='12.1.105', url_func=lambda arch, version: f"https://conda.anaconda.org/nvidia/label/cuda-12.1.1/linux-{arch}/cuda-nvdisasm-{version}-0.tar.bz2")
+download_and_copy_ptxas()
+
 
 setup(
     name="triton",
@@ -296,6 +277,7 @@ setup(
         "triton/_C",
         "triton/common",
         "triton/compiler",
+        "triton/interpreter",
         "triton/language",
         "triton/language/extra",
         "triton/ops",
@@ -306,11 +288,11 @@ setup(
         "triton/tools",
     ],
     install_requires=[
-        "filelock"
+        "filelock",
     ],
     include_package_data=True,
     ext_modules=[CMakeExtension("triton", "triton/_C/")],
-    cmdclass={"build_ext": CMakeBuild, "build_py": CMakeBuildPy, "clean": CMakeClean},
+    cmdclass={"build_ext": CMakeBuild, "build_py": CMakeBuildPy},
     zip_safe=False,
     # for PyPI
     keywords=["Compiler", "Deep Learning"],
@@ -329,7 +311,7 @@ setup(
     test_suite="tests",
     extras_require={
         "build": [
-            "cmake>=3.20",
+            "cmake>=3.18",
             "lit",
         ],
         "tests": [
@@ -339,13 +321,11 @@ setup(
             "numpy",
             "pytest",
             "scipy>=1.7.1",
-            "torch",
         ],
         "tutorials": [
             "matplotlib",
             "pandas",
             "tabulate",
-            "torch",
         ],
     },
 )

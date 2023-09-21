@@ -21,7 +21,7 @@ namespace mlir {
 /// This lattice value represents known information on the axes of a lattice.
 class AxisInfo {
 public:
-  typedef SmallVector<int64_t> DimVectorT;
+  typedef SmallVector<int64_t, 4> DimVectorT;
 
 public:
   /// Default constructor

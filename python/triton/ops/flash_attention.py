@@ -21,10 +21,9 @@ def _fwd_kernel(
     Out,
     stride_qz, stride_qh, stride_qm, stride_qk,
     stride_kz, stride_kh, stride_kn, stride_kk,
-    stride_vz, stride_vh, stride_vn, stride_vk,
+    stride_vz, stride_vh, stride_vk, stride_vn,
     stride_oz, stride_oh, stride_om, stride_on,
     Z, H, N_CTX,
-    Z_H_N_CTX,
     BLOCK_M: tl.constexpr, BLOCK_DMODEL: tl.constexpr,
     BLOCK_N: tl.constexpr,
     IS_CAUSAL: tl.constexpr,
@@ -32,21 +31,27 @@ def _fwd_kernel(
     start_m = tl.program_id(0)
     off_hz = tl.program_id(1)
     qvk_offset = off_hz * stride_qh
-    vk_offset = qvk_offset // stride_qm
-
+    Q_block_ptr = tl.make_block_ptr(
+        base=Q + qvk_offset,
+        shape=(N_CTX, BLOCK_DMODEL),
+        strides=(stride_qm, stride_qk),
+        offsets=(start_m * BLOCK_M, 0),
+        block_shape=(BLOCK_M, BLOCK_DMODEL),
+        order=(1, 0)
+    )
     K_block_ptr = tl.make_block_ptr(
-        base=K,
-        shape=(BLOCK_DMODEL, Z_H_N_CTX),
+        base=K + qvk_offset,
+        shape=(BLOCK_DMODEL, N_CTX),
         strides=(stride_kk, stride_kn),
-        offsets=(0, vk_offset),
+        offsets=(0, 0),
         block_shape=(BLOCK_DMODEL, BLOCK_N),
         order=(0, 1)
     )
     V_block_ptr = tl.make_block_ptr(
-        base=V,
-        shape=(Z_H_N_CTX, BLOCK_DMODEL),
-        strides=(stride_vn, stride_vk),
-        offsets=(vk_offset, 0),
+        base=V + qvk_offset,
+        shape=(N_CTX, BLOCK_DMODEL),
+        strides=(stride_vk, stride_vn),
+        offsets=(0, 0),
         block_shape=(BLOCK_N, BLOCK_DMODEL),
         order=(1, 0)
     )
@@ -63,11 +68,7 @@ def _fwd_kernel(
     # don't work as expected with `exp` in the loop
     qk_scale = sm_scale * 1.44269504
     # load q: it will stay in SRAM throughout
-
-    offs_k = tl.arange(0, BLOCK_DMODEL)
-    Q_ptrs = Q + qvk_offset + offs_m[:, None] * stride_qm + offs_k[None, :] * stride_qk
-    q = tl.load(Q_ptrs)
-
+    q = tl.load(Q_block_ptr)
     q = (q * qk_scale).to(K.dtype.element_ty)
     lo = 0
     hi = (start_m + 1) * BLOCK_M if IS_CAUSAL else N_CTX
@@ -85,7 +86,8 @@ def _fwd_kernel(
         alpha = tl.math.exp2(m_i - m_i_new)
         p = tl.math.exp2(qk - m_i_new[:, None])
         # -- scale and update acc --
-        acc *= alpha[:, None]
+        acc_scale = l_i * 0 + alpha  # workaround some compiler bug
+        acc *= acc_scale[:, None]
         acc += tl.dot(p.to(V.dtype.element_ty), v, allow_tf32=True)
         # -- update m_i and l_i --
         l_i = l_i * alpha + tl.sum(p, 1)
@@ -99,14 +101,13 @@ def _fwd_kernel(
     tl.store(l_ptrs, m_i + tl.math.log2(l_i))
     # write back O
     O_block_ptr = tl.make_block_ptr(
-        base=Out,
-        shape=(Z_H_N_CTX, BLOCK_DMODEL),
+        base=Out + qvk_offset,
+        shape=(N_CTX, BLOCK_DMODEL),
         strides=(stride_om, stride_on),
-        offsets=(vk_offset + start_m * BLOCK_M, 0),
+        offsets=(start_m * BLOCK_M, 0),
         block_shape=(BLOCK_M, BLOCK_DMODEL),
         order=(1, 0)
     )
-    # O_ptrs = Out + qvk_offset + offs_m[:, None] * stride_qm + offs_k[None, :] * stride_qk
     tl.store(O_block_ptr, acc.to(K.dtype.element_ty))
 
 
@@ -136,7 +137,7 @@ def _bwd_kernel_one_col_block(
     D,
     stride_dqa, stride_qz, stride_qh, stride_qm, stride_qk,
     stride_kz, stride_kh, stride_kn, stride_kk,
-    stride_vz, stride_vh, stride_vn, stride_vk,
+    stride_vz, stride_vh, stride_vk, stride_vn,
     Z, H, N_CTX,
     off_hz, start_n, num_block,
     BLOCK_M: tl.constexpr, BLOCK_DMODEL: tl.constexpr,
@@ -158,7 +159,7 @@ def _bwd_kernel_one_col_block(
     # initialize pointers to value-like data
     q_ptrs = Q + (offs_qm[:, None] * stride_qm + offs_k[None, :] * stride_qk)
     k_ptrs = K + (offs_n[:, None] * stride_kn + offs_k[None, :] * stride_kk)
-    v_ptrs = V + (offs_n[:, None] * stride_vn + offs_k[None, :] * stride_vk)
+    v_ptrs = V + (offs_n[:, None] * stride_vk + offs_k[None, :] * stride_vn)
     do_ptrs = DO + (offs_qm[:, None] * stride_qm + offs_k[None, :] * stride_qk)
     dq_ptrs = DQ + (offs_qm[:, None] * stride_qm + offs_k[None, :] * stride_qk)
     # pointer to row-wise quantities in value-like data
@@ -211,7 +212,7 @@ def _bwd_kernel_one_col_block(
         q_ptrs += BLOCK_M * stride_qm
         do_ptrs += BLOCK_M * stride_qm
     # write-back
-    dv_ptrs = DV + (offs_n[:, None] * stride_vn + offs_k[None, :] * stride_vk)
+    dv_ptrs = DV + (offs_n[:, None] * stride_vk + offs_k[None, :] * stride_vn)
     dk_ptrs = DK + (offs_n[:, None] * stride_kn + offs_k[None, :] * stride_kk)
     tl.store(dv_ptrs, dv)
     tl.store(dk_ptrs, dk)
@@ -227,7 +228,7 @@ def _bwd_kernel(
     D,
     stride_dqa, stride_qz, stride_qh, stride_qm, stride_qk,
     stride_kz, stride_kh, stride_kn, stride_kk,
-    stride_vz, stride_vh, stride_vn, stride_vk,
+    stride_vz, stride_vh, stride_vk, stride_vn,
     Z, H, N_CTX,
     BLOCK_M: tl.constexpr, BLOCK_DMODEL: tl.constexpr,
     BLOCK_N: tl.constexpr,
@@ -258,7 +259,7 @@ def _bwd_kernel(
                 D,
                 stride_dqa, stride_qz, stride_qh, stride_qm, stride_qk,
                 stride_kz, stride_kh, stride_kn, stride_kk,
-                stride_vz, stride_vh, stride_vn, stride_vk,
+                stride_vz, stride_vh, stride_vk, stride_vn,
                 Z, H, N_CTX,
                 off_hz, start_n, num_block_n,
                 BLOCK_M=BLOCK_M, BLOCK_DMODEL=BLOCK_DMODEL,
@@ -275,7 +276,7 @@ def _bwd_kernel(
             D,
             stride_dqa, stride_qz, stride_qh, stride_qm, stride_qk,
             stride_kz, stride_kh, stride_kn, stride_kk,
-            stride_vz, stride_vh, stride_vn, stride_vk,
+            stride_vz, stride_vh, stride_vk, stride_vn,
             Z, H, N_CTX,
             off_hz, start_n, num_block_n,
             BLOCK_M=BLOCK_M, BLOCK_DMODEL=BLOCK_DMODEL,
@@ -293,8 +294,12 @@ class _attention(torch.autograd.Function):
         capability = torch.cuda.get_device_capability()
         if capability[0] < 8:
             raise RuntimeError("Flash attention currently only supported for compute capability >= 80")
-        BLOCK_M = 128
-        BLOCK_N = 64
+        if torch.version.hip is not None:
+            BLOCK_M = 64
+            BLOCK_N = 64
+        else:
+            BLOCK_M = 128
+            BLOCK_N = 64
         # shape constraints
         Lq, Lk, Lv = q.shape[-1], k.shape[-1], v.shape[-1]
         assert Lq == Lk and Lk == Lv
@@ -312,7 +317,6 @@ class _attention(torch.autograd.Function):
             v.stride(0), v.stride(1), v.stride(2), v.stride(3),
             o.stride(0), o.stride(1), o.stride(2), o.stride(3),
             q.shape[0], q.shape[1], q.shape[2],
-            q.shape[0] * q.shape[1] * q.shape[2],
             BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_DMODEL=Lk,
             IS_CAUSAL=causal,
             num_warps=num_warps,
@@ -342,7 +346,7 @@ class _attention(torch.autograd.Function):
         dk = torch.empty_like(k)
         dv = torch.empty_like(v)
         delta = torch.empty_like(L)
-        _bwd_preprocess[(cdiv(q.shape[2], BLOCK) * ctx.grid[1], )](
+        _bwd_preprocess[(ctx.grid[0] * ctx.grid[1], )](
             o, do,
             delta,
             BLOCK_M=BLOCK, D_HEAD=ctx.BLOCK_DMODEL,

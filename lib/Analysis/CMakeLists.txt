@@ -10,10 +10,8 @@ add_mlir_library(TritonAnalysis
   TritonGPUAttrDefsIncGen
 
   LINK_LIBS PUBLIC
-  ASMBuilder
   MLIRAnalysis
   MLIRLLVMDialect
   TritonIR
   TritonGPUIR
-  TritonNvidiaGPUIR
 )

@@ -1,0 +1,2 @@
+"Index","KernelName","gpu-id","queue-id","queue-index","pid","tid","grd","wgr","lds","scr","arch_vgpr","accum_vgpr","sgpr","wave_size","sig","obj","DispatchNs","BeginNs","EndNs","CompleteNs","DurationNs"
+0,"_Z14hgemm_16x16x16PKDF16_S0_Pf.kd",4,0,0,93668,93668,64,64,0,0,16,0,16,64,"0x0","0x7f2050926640",2428835078335165,2428835078374030,2428835078380270,2428835078396846,6240

@@ -48,13 +48,21 @@ public:
              dstDotOp.getParent() == srcMmaEncoding))
           return;
       }
+#ifdef USE_ROCM
+      if (auto srcMfmaEncoding =
+              srcEncoding.dyn_cast<triton::gpu::MfmaEncodingAttr>()) {
+
+        if (srcMfmaEncoding.getWarpsPerCTA()[1] == 1 &&
+            srcMfmaEncoding.getIsTransposed() &&
+            dstDotOp.getParent() == srcMfmaEncoding)
+          return;
+      }
+#endif
       auto tmpType = RankedTensorType::get(
           dstType.getShape(), dstType.getElementType(),
           triton::gpu::SharedEncodingAttr::get(
               mod.getContext(), dstDotOp, srcType.getShape(),
-              triton::gpu::getOrder(srcEncoding),
-              triton::gpu::getCTALayout(srcEncoding),
-              srcType.getElementType()));
+              triton::gpu::getOrder(srcEncoding), srcType.getElementType()));
       auto tmp = builder.create<triton::gpu::ConvertLayoutOp>(
           cvtOp.getLoc(), tmpType, cvtOp.getOperand());
       auto newConvert = builder.create<triton::gpu::ConvertLayoutOp>(

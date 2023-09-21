@@ -8,9 +8,8 @@ using namespace mlir::triton;
 
 void populateReduceOpToLLVMPatterns(
     TritonGPUToLLVMTypeConverter &typeConverter, RewritePatternSet &patterns,
-    int numWarps, ModuleAxisInfoAnalysis &axisInfoAnalysis,
     ModuleAllocation &allocation,
     ConvertTritonGPUOpToLLVMPatternBase::IndexCacheInfo &indexCacheInfo,
-    int computeCapability, PatternBenefit benefit);
+    PatternBenefit benefit);
 
 #endif

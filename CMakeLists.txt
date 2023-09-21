@@ -24,6 +24,9 @@ option(TRITON_BUILD_TUTORIALS "Build C++ Triton tutorials" ON)
 option(TRITON_BUILD_PYTHON_MODULE "Build Python Triton bindings" OFF)
 set(TRITON_CODEGEN_BACKENDS "" CACHE STRING "Enable different codegen backends")
 
+# Force TRITON_USE_ROCM for ROCm support
+set(TRITON_USE_ROCM ON)
+
 # Ensure Python3 vars are set correctly
 # used conditionally in this file and by lit tests
 
@@ -48,6 +51,12 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${PYBIND11_INCLUDE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -D__STDC_FORMAT_MACROS  -fPIC -std=gnu++17 -fvisibility=hidden -fvisibility-inlines-hidden")
+
+if (TRITON_USE_ROCM)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_ROCM -Wno-unused-result -Wno-attributes -DTRITONGPU_DEFAULT_WARPSIZE=64")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRITONGPU_DEFAULT_WARPSIZE=32")
+endif()
 
 if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET 11.6)
@@ -209,9 +218,9 @@ if(TRITON_BUILD_PYTHON_MODULE)
     TritonAnalysis
     TritonTransforms
     TritonGPUTransforms
-    TritonNvidiaGPUTransforms
     TritonLLVMIR
     TritonPTX
+    TritonHSACO
     ${dialect_libs}
     ${conversion_libs}
 
@@ -229,16 +238,20 @@ if(TRITON_BUILD_PYTHON_MODULE)
     MLIRIR
   )
 
+  set(ROCM_LIBRARIES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/rocm/libhsa-runtime64.so
+  )
+
   if(WIN32)
-    target_link_libraries(triton PRIVATE ${LLVM_LIBRARIES} ${CMAKE_DL_LIBS}
+    target_link_libraries(triton PRIVATE ${ROCM_LIBRARIES} ${LLVM_LIBRARIES} ${CMAKE_DL_LIBS}
       ${TRITON_LIBRARIES}
     )
   elseif(APPLE)
-    target_link_libraries(triton ${LLVM_LIBRARIES} z
+    target_link_libraries(triton ${ROCM_LIBRARIES} ${LLVM_LIBRARIES} z
       ${TRITON_LIBRARIES}
     )
   else()
-    target_link_libraries(triton ${LLVM_LIBRARIES} z
+    target_link_libraries(triton ${ROCM_LIBRARIES} ${LLVM_LIBRARIES} z
       ${TRITON_LIBRARIES}
     )
     # TODO: Figure out which target is sufficient to fix errors; triton is

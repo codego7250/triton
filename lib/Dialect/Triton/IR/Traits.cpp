@@ -7,17 +7,15 @@ using namespace mlir;
 
 static LogicalResult verifySameEncoding(Type typeA, Type typeB,
                                         bool allowTensorPointerType) {
-  // TODO(Keren): the allowTensorPointerType argument is a hack to allow.
-  // The type checking code is kind of a mess with the current design.
   auto getEncoding = [=](Type type) -> Attribute {
-    Attribute ret;
-    if (auto tensorType = dyn_cast<RankedTensorType>(type)) {
-      ret = tensorType.getEncoding();
-    }
-    if (!allowTensorPointerType) {
+    auto rankedType = type.dyn_cast<RankedTensorType>();
+    if (allowTensorPointerType) {
+      if (auto ptrType = type.dyn_cast<triton::PointerType>())
+        rankedType = ptrType.getPointeeType().dyn_cast<RankedTensorType>();
+    } else {
       assert(!triton::isTensorPointerType(type));
     }
-    return ret;
+    return rankedType ? rankedType.getEncoding() : Attribute();
   };
   auto encodingA = getEncoding(typeA);
   auto encodingB = getEncoding(typeB);
@@ -129,16 +127,7 @@ OpTrait::impl::verifySameLoadStoreOperandsAndResultShape(Operation *op) {
 bool OpTrait::impl::verifyLoadStorePointerAndValueType(Type valueType,
                                                        Type ptrType) {
   if (triton::isTensorPointerType(ptrType)) {
-    // The encoding of tensor pointers is meaningless, we only check shapes and
-    // the type of elements
-    auto tensorAType = ptrType.cast<triton::PointerType>()
-                           .getPointeeType()
-                           .cast<RankedTensorType>();
-    if (!isa<RankedTensorType>(valueType))
-      return false;
-    auto tensorBType = valueType.cast<RankedTensorType>();
-    return tensorAType.getShape() == tensorBType.getShape() &&
-           tensorAType.getElementType() == tensorBType.getElementType();
+    return ptrType.cast<triton::PointerType>().getPointeeType() == valueType;
   } else if (auto rankedType = ptrType.dyn_cast<RankedTensorType>()) {
     if (auto elementPtrType =
             dyn_cast<triton::PointerType>(rankedType.getElementType())) {

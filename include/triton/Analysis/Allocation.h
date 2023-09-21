@@ -9,7 +9,6 @@
 
 #include "triton/Dialect/Triton/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
-#include "triton/Dialect/TritonNvidiaGPU/IR/Dialect.h"
 #include <atomic>
 #include <limits>
 
@@ -21,7 +20,6 @@ class AllocationAnalysis;
 SmallVector<unsigned>
 getScratchConfigForCvtLayout(triton::gpu::ConvertLayoutOp op, unsigned &inVec,
                              unsigned &outVec);
-SmallVector<unsigned> getRepShapeForCvtLayout(triton::gpu::ConvertLayoutOp op);
 
 } // namespace triton
 
@@ -149,17 +147,17 @@ private:
     BufferKind kind;
     BufferId id;
     size_t size;
-    size_t alignment;
     size_t offset;
 
     bool operator==(const BufferT &other) const { return id == other.id; }
     bool operator<(const BufferT &other) const { return id < other.id; }
 
-    BufferT() : BufferT(BufferKind::Explicit, 0) {}
-    BufferT(BufferKind kind, size_t size, size_t alignment = 4,
-            size_t offset = 0)
-        : kind(kind), id(nextId++), size(size), alignment(alignment),
-          offset(offset) {}
+    BufferT() : BufferT(BufferKind::Explicit) {}
+    BufferT(BufferKind kind)
+        : kind(kind), id(InvalidBufferId), size(0), offset(0) {}
+    BufferT(BufferKind kind, size_t size) : BufferT(kind, size, 0) {}
+    BufferT(BufferKind kind, size_t size, size_t offset)
+        : kind(kind), id(nextId++), size(size), offset(offset) {}
   };
 
   /// Op -> Scratch Buffer
