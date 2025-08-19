@@ -9,6 +9,7 @@ graft python/triton
 graft test
 graft third_party
 graft unittest
+include python/triton/language/target_info.py
 include CMakeLists.txt
 include Makefile
 include python/build_helpers.py
