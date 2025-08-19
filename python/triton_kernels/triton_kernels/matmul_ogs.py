@@ -163,6 +163,7 @@ def init_allocation(x, w, precision_config, fused_activation, routing_data, gath
     out_shape = (batch_dim, y_rows, N // fused_activation.reduction_n)
     out_dtype = precision_config.out_dtype or x.dtype
     output = (out_shape, out_dtype)
+    # --tbf--#
     # ---- scratchpad -----#
     scratchpad = dict()
     if opt_flags.split_k > 1 or scatter_indx is not None:
