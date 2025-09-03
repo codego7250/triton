@@ -7,6 +7,7 @@ import torch
 import triton
 from enum import Enum, auto
 import math
+import os
 # utilities
 from triton_kernels import target_info
 from triton_kernels.numerics import InFlexData, OutFlexData
@@ -324,7 +325,7 @@ def matmul_ogs(x, w, bias,
     # unpack scales
     w_scale = precision_config.weight_scale
     w_has_mx = w_scale is not None
-    is_hopper_fp8 = is_cuda() and not target_info.cuda_capability_geq(10, 0) and bitwidth(w.dtype) == 8
+    is_hopper_fp8 = is_cuda() and not target_info.cuda_capability_geq(9, 0) and bitwidth(w.dtype) == 8
     if w_has_mx: assert w.stride(-2) == 1, "`w` must be column-major when it has data-type mxfp"
     if is_hopper_fp8: assert w.stride(-2) == 1, "`w` must be column-major when it has data-type FP8 on capability < 10"
     if not isinstance(w, Tensor):
@@ -448,6 +449,7 @@ def matmul_ogs(x, w, bias,
     w_scale_strides = (0, ) * (3 - len(w_scale_strides)) + w_scale_strides
     out_matmul_scale_strides = out_matmul_scale.stride() if out_matmul_has_mx else (None, None, None, None)
     out_matmul_scale_strides = (0, ) * (3 - len(out_matmul_scale_strides)) + out_matmul_scale_strides
+    use_fp8_matmul = int ( os.environ.get("USE_FP8_MATMUL", 0) ) != 0
     # launch kernel
     kernels = get_kernels(epilogue.specs, matmul_fused_activation.specs)
     (kernels._p_matmul_ogs if opt_flags.is_persistent else kernels._matmul_ogs)[(grid,)](
@@ -500,6 +502,7 @@ def matmul_ogs(x, w, bias,
                    SWAP_XW=get_swap_xw(precision_config, opt_flags),
                    IS_EPILOGUE_DEQUANT_MXFP8=epilogue.specs.name == FnName.DEQUANTIZE_MXFP8.name,
                    NUM_SMS = grid if opt_flags.is_persistent else 0,
+                   use_fp8_matmul = use_fp8_matmul,
                    **opt_flags.target_kernel_kwargs)
     # Build grouped reduction inputs in a uniform way
     group_indx = None if scatter_indx is None else scatter_indx.src_indx.view(-1, routing_data.n_expts_act)

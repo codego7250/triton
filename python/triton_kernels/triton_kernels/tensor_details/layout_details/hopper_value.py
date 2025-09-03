@@ -2,6 +2,7 @@ import torch
 import triton
 import triton.language as tl
 from .base import Layout
+from triton_kernels.target_info import FP8_E5M2_MAX, FP8_E4M3_MAX
 
 
 def right_shift_unsigned(x, shift):
@@ -321,3 +322,31 @@ def mxfp4_to_bf16_triton(x, scale, mx_axis: tl.constexpr):
     # Combine scale and x
     x = x * scale
     return x
+
+@triton.constexpr_function
+def get_fp8_e5_max():
+    return FP8_E5M2_MAX
+
+@triton.constexpr_function
+def get_fp8_e4_max():
+    return FP8_E4M3_MAX
+
+@triton.jit
+def mxfp4_to_fp8_e5m2_fn_trition(x, scale, mx_axis: tl.constexpr, fp8_dtype: tl.constexpr):
+    bf16 = mxfp4_to_bf16_triton(x, scale, mx_axis)
+    # tile-wise scalar
+    fp8_max : tl.constexpr = get_fp8_e5_max()
+    fp8_scale = tl.max(tl.abs(bf16)) / fp8_max
+    fp8 = (bf16 / fp8_scale).to(fp8_dtype)
+    fp8_scale = fp8_scale.to(tl.float32)
+    return fp8, fp8_scale
+
+@triton.jit
+def mxfp4_to_fp8_e4m3_fn_trition(x, scale, mx_axis: tl.constexpr, fp8_dtype: tl.constexpr):
+    bf16 = mxfp4_to_bf16_triton(x, scale, mx_axis)
+    # tile-wise scalar
+    fp8_max : tl.constexpr = get_fp8_e4_max()
+    fp8_scale = tl.max(tl.abs(bf16)) / fp8_max
+    fp8 = (bf16 / fp8_scale).to(fp8_dtype)
+    fp8_scale = fp8_scale.to(tl.float32)
+    return fp8, fp8_scale
