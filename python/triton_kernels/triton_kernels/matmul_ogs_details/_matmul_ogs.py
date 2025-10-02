@@ -94,6 +94,10 @@ def _matmul_ogs(
              UPCAST_INDICES: tl.constexpr = False,
              SWAP_XW: tl.constexpr = False,
              IS_EPILOGUE_QUANT_MXFP8: tl.constexpr = False,
+             pYPtrs=None,
+             ScatterShardIndx=None,
+             reduce_rank = 0,
+             n_reduce_shards: tl.constexpr = 1,
              ):
     tl.assume(stride_y_k >= 0)
     tl.assume(stride_y_z >= 0)
@@ -457,4 +461,24 @@ def _matmul_ogs(
         out = float_to_flex(out, YExpectedScale, YActualScale, YChecksumScale, mask, Y, FLEXPOINT_SATURATE_INF)
         if EPILOGUE_FN is not None and not IS_EPILOGUE_QUANT_MXFP8:
             out = EPILOGUE_FN(out, *epilogue_fn_args, target_dtype=YPtrs.dtype.element_ty)
-    tl.store(YPtrs, out, mask=mask)
+    
+    if pYPtrs is None:
+        tl.store(YPtrs, out, mask=mask)
+    else:
+        tl.static_assert(Y_TMA_MODE is None, "TMA is not supported with fused comms")
+        if ScatterShardIndx is not None:
+            dst_shard_idx = tl.load(ScatterShardIndx + offs_y_m, mask=mask_m)
+            for i in tl.static_range(n_reduce_shards):
+                peer = dst_shard_idx * n_reduce_shards + (reduce_rank + i) % n_reduce_shards
+                peer_Y_ptr = tl.load(pYPtrs + peer).to(tl.pointer_type(Y.type.element_ty))
+                tl.multiple_of(peer_Y_ptr, 16)
+                offs_y_mn = offs_y_m.to(index_type)[:, None] * stride_y_m * n_reduce_shards + reduce_rank * stride_y_m + offs_y_n.to(index_type)[None, :] * stride_y_n
+                tl.store(peer_Y_ptr[:, None] + offs_y_mn, out, mask=mask)
+        else:
+            # full all gather
+            for i in tl.static_range(n_reduce_shards):
+                peer = (reduce_rank + i) % n_reduce_shards
+                peer_Y_ptr = tl.load(pYPtrs + peer).to(tl.pointer_type(Y.type.element_ty))
+                tl.multiple_of(peer_Y_ptr, 16)
+                offs_y_mn = offs_y_m.to(index_type)[:, None] * stride_y_m * n_reduce_shards + reduce_rank * stride_y_m + offs_y_n.to(index_type)[None, :] * stride_y_n
+                tl.store(peer_Y_ptr + offs_y_mn, out, mask=mask)
